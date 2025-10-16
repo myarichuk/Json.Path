@@ -1,0 +1,33 @@
+style: github
+template: CHANGELOG.tpl.md
+info:
+  title: "CHANGELOG"
+  repository_url: https://github.com/myarichuk/Json.Path
+options:
+  tag_filter_pattern: '^v[0-9]'
+
+  commits:
+    sort: "ASC"
+  commit_groups:
+    title_maps:
+      feat: "Features"
+      feature: "Features"
+      fix: "Fixes"
+      fixes: "Fixes"
+      perf: "Performance"
+      refactor: "Refactoring"
+      docs: "Documentation"
+      test: "Tests"
+      tests: "Tests"
+      ci: "CI"
+      chore: "Chores"
+      chores: "Chores"
+  header:
+    pattern: "^(\\w*)(?:\\((.*)\\))?:\\s(.*)$"
+    pattern_maps:
+      - Type
+      - Scope
+      - Subject
+  notes:
+    keywords:
+      - BREAKING CHANGE
