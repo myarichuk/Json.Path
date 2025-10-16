@@ -3,6 +3,29 @@
 All notable changes to this project will be documented in this file.
 
 
+## [v0.2.0-2](https://github.com/myarichuk/Json.Path/compare/v0.1.0-2...v0.2.0-2) - 2025-10-16
+
+
+
+
+### Features
+
+- add navigator abstraction for compiled json paths ([9843dc7](https://github.com/myarichuk/Json.Path/commit/9843dc7af14e22fbd3710f2c1a82d754b27185e2))
+
+
+
+
+
+
+
+
+### Merges
+
+- Merge pull request [#2](https://github.com/myarichuk/Json.Path/issues/2) from myarichuk/codex/create-agnostic-state-machine-for-serializers
+
+
+
+
 ## v0.1.0-2 - 2025-10-16
 
 
