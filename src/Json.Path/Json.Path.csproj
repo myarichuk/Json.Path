@@ -3,11 +3,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <AssemblyName>Json.Path</AssemblyName>
     <RootNamespace>Json.Path</RootNamespace>
-    <Description>Lightweight helpers for resolving simple JSONPath expressions against System.Text.Json documents.</Description>
+    <Description>Lightweight helpers for compiling and resolving simple JSONPath expressions.</Description>
     <PackageId>Json.Path</PackageId>
   </PropertyGroup>
-
-  <ItemGroup>
-    <PackageReference Include="System.Text.Json" Version="8.0.5" />
-  </ItemGroup>
 </Project>
