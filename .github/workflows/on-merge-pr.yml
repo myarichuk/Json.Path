@@ -1,0 +1,218 @@
+name: Publish & Release
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+env:
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+
+permissions:
+  contents: write
+  packages: write
+
+concurrency:
+  group: ${{ github.ref }}-publish-release
+  cancel-in-progress: true
+
+jobs:
+  build-and-pack:
+    name: Build & Pack
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Install GitVersion
+        uses: gittools/actions/gitversion/setup@v4
+        with:
+          versionSpec: '6.x'
+
+      - name: Determine version
+        id: gitversion
+        uses: gittools/actions/gitversion/execute@v4
+        with:
+          configFilePath: ./.github/gitversion.yml
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: >
+          dotnet build --configuration Release --no-restore
+          -p:ContinuousIntegrationBuild=true
+          -p:CI=true
+          -p:Version=${{ steps.gitversion.outputs.assemblySemVer }}
+          -p:PackageVersion=${{ steps.gitversion.outputs.assemblySemVer }}
+          -p:AssemblyVersion=${{ steps.gitversion.outputs.assemblySemVer }}
+          -p:FileVersion=${{ steps.gitversion.outputs.assemblySemFileVer }}
+          -p:InformationalVersion=${{ steps.gitversion.outputs.informationalVersion }}
+
+      - name: Test
+        run: >
+          dotnet test --configuration Release --no-build --verbosity normal
+          -p:ContinuousIntegrationBuild=true
+          -p:CI=true
+          -p:Version=${{ steps.gitversion.outputs.assemblySemVer }}
+          -p:AssemblyVersion=${{ steps.gitversion.outputs.assemblySemVer }}
+          -p:FileVersion=${{ steps.gitversion.outputs.assemblySemFileVer }}
+
+      - name: Pack NuGet
+        run: |
+          mkdir -p package
+          dotnet pack src/Json.Path/Json.Path.csproj --configuration Release --no-build -o package \
+            -p:ContinuousIntegrationBuild=true \
+            -p:CI=true \
+            -p:AssemblyVersion=${{ steps.gitversion.outputs.assemblySemVer }} \
+            -p:FileVersion=${{ steps.gitversion.outputs.assemblySemFileVer }} \
+            -p:InformationalVersion=${{ steps.gitversion.outputs.informationalVersion }} \
+            -p:PackageVersion=${{ steps.gitversion.outputs.assemblySemVer }} \
+            -p:Version=${{ steps.gitversion.outputs.assemblySemVer }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nupkg
+          path: |
+            package/*.nupkg
+            package/*.snupkg
+
+      - name: Create & push tag for this build
+        env:
+          TAG: v${{ steps.gitversion.outputs.semVer }}
+        run: |
+          set -euo pipefail
+          git fetch --tags --force
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            echo "Tag $TAG already exists; skipping"
+            exit 0
+          fi
+          git config user.email "action@github.com"
+          git config user.name "GitHub Action"
+          git tag -a "$TAG" -m "$TAG"
+          git push origin "$TAG"
+
+    outputs:
+      version: ${{ steps.gitversion.outputs.semVer }}
+      nuget-version: ${{ steps.gitversion.outputs.assemblySemVer }}
+
+  publish-nuget:
+    name: Publish (NuGet)
+    runs-on: ubuntu-latest
+    needs: [build-and-pack]
+    env:
+      NUGET_TOKEN: ${{ secrets.NUGET_TOKEN }}
+    steps:
+      - name: NuGet token not supplied
+        if: env.NUGET_TOKEN == ''
+        run: echo "NUGET_TOKEN secret is not configured. Skipping publish step."
+
+      - name: Setup .NET
+        if: env.NUGET_TOKEN != ''
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 8.0.x
+
+      - uses: actions/download-artifact@v5
+        if: env.NUGET_TOKEN != ''
+        with:
+          name: nupkg
+          path: package
+
+      - name: Publish Json.Path package
+        if: env.NUGET_TOKEN != ''
+        run: dotnet nuget push package/Json.Path*.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ env.NUGET_TOKEN }} --skip-duplicate
+
+  changelog-release:
+    name: Update Changelog & Release (git-chglog)
+    runs-on: ubuntu-latest
+    needs: [build-and-pack]
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Debug tags
+        run: |
+          git fetch --tags --force
+          echo "Tags (newest by version):"
+          git tag --list 'v[0-9]*' --sort=-version:refname | head -n 10
+
+      - name: Resolve latest/previous tags
+        id: tags
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --tags --force
+          mapfile -t TAGS < <(git tag --list 'v[0-9]*' --sort=-version:refname)
+          if [[ ${#TAGS[@]} -lt 1 ]]; then
+            echo "No valid v* tags found" >&2
+            exit 1
+          fi
+          LATEST="${TAGS[0]}"
+          PREV="${TAGS[1]:-}"
+          echo "latest=$LATEST" >> "$GITHUB_OUTPUT"
+          echo "prev=$PREV"     >> "$GITHUB_OUTPUT"
+          echo "Resolved: LATEST=$LATEST PREV=${PREV:-<none>}"
+
+      - uses: actions/download-artifact@v5
+        with:
+          name: nupkg
+          path: package
+
+      - name: Install git-chglog
+        run: |
+          set -euxo pipefail
+          CHGLOG_VERSION="0.15.4"
+          curl -sSL "https://github.com/git-chglog/git-chglog/releases/download/v${CHGLOG_VERSION}/git-chglog_${CHGLOG_VERSION}_linux_amd64.tar.gz" -o /tmp/git-chglog.tar.gz
+          tar -xzf /tmp/git-chglog.tar.gz -C /usr/local/bin git-chglog
+          /usr/local/bin/git-chglog --version
+
+      - name: Generate CHANGELOG.md (full)
+        run: |
+          /usr/local/bin/git-chglog -o CHANGELOG.md
+          if git diff --quiet -- CHANGELOG.md; then
+            echo "NO_CHANGELOG_CHANGES=1" >> $GITHUB_ENV
+          fi
+
+      - name: Commit CHANGELOG.md
+        if: env.NO_CHANGELOG_CHANGES != '1'
+        run: |
+          git config user.email "action@github.com"
+          git config user.name "GitHub Action"
+          git add CHANGELOG.md
+          git commit -m "chore(changelog): update [skip ci]"
+          git push
+
+      - name: Generate release notes for prev..latest
+        run: |
+          set -euo pipefail
+          if [[ -z "${{ steps.tags.outputs.prev }}" ]]; then
+            /usr/local/bin/git-chglog "${{ steps.tags.outputs.latest }}" > RELEASE_NOTES.md
+          else
+            /usr/local/bin/git-chglog "${{ steps.tags.outputs.prev }}..${{ steps.tags.outputs.latest }}" > RELEASE_NOTES.md
+          fi
+          sed -n '1,120p' RELEASE_NOTES.md
+
+      - name: Create Release
+        uses: ncipollo/release-action@v1
+        with:
+          tag:  ${{ steps.tags.outputs.latest }}
+          name: ${{ steps.tags.outputs.latest }}
+          bodyFile: RELEASE_NOTES.md
+          allowUpdates: true
+          draft: false
+          token: ${{ github.token }}
+          artifacts: "package/*.nupkg,package/*.snupkg"

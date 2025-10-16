@@ -1,0 +1,11 @@
+<Project>
+  <PropertyGroup>
+    <PackageReleaseNotes>See the changelog at https://github.com/myarichuk/Json.Path/blob/main/CHANGELOG.md</PackageReleaseNotes>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)AssemblyInfo.cs" />
+  </ItemGroup>
+
+  <Import Project="$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildThisFileDirectory)../, Directory.Build.targets))\Directory.Build.targets" Condition=" '$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildThisFileDirectory)../, Directory.Build.targets))' != '' " />
+</Project>
