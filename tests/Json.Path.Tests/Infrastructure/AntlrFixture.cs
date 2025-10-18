@@ -1,5 +1,7 @@
 using System;
+using System.Globalization;
 using Antlr4.Runtime;
+using Json.Path.Parsing;
 
 namespace Json.Path.Tests.Infrastructure;
 
@@ -22,7 +24,7 @@ public class AntlrFixture<TLexer, TParser>
         var lexer = CreateLexer(input);
         var tokenStream = new CommonTokenStream(lexer);
         var parser = (TParser?)Activator.CreateInstance(typeof(TParser), tokenStream);
-
+        parser?.ErrorHandler = new TolerantErrorStrategy();
         return parser ?? throw new InvalidOperationException($"Unable to create parser of type {typeof(TParser)}.");
     }
 }

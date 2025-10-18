@@ -5,6 +5,7 @@
     <RootNamespace>Json.Path.Tests</RootNamespace>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);SA0001</NoWarn>
+    <LangVersion>preview</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>

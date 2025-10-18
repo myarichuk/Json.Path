@@ -3,7 +3,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <AssemblyName>Json.Path</AssemblyName>
     <RootNamespace>Json.Path</RootNamespace>
-    <Description>Lightweight helpers for compiling and resolving simple JSONPath expressions.</Description>
+    <Description>Lightweight helper for compiling and resolving JSONPath expressions</Description>
     <PackageId>Json.Path</PackageId>
   </PropertyGroup>
 
@@ -18,5 +18,8 @@
     <Antlr4 Include="Parsing/JsonPathTest.g4">
       <Package>Json.Path.Parsing</Package>
     </Antlr4>
+    <Antlr4 Include="Parsing/JsonPath.g4">
+      <Package>Json.Path.Parsing</Package>
+    </Antlr4>      
   </ItemGroup>
 </Project>
