@@ -7,10 +7,10 @@ namespace Json.Path.Tests.Parsing;
 public class JsonPathGrammarTests(AntlrFixture<JsonPathLexer, JsonPathParser> fixture)
     : IClassFixture<AntlrFixture<JsonPathLexer, JsonPathParser>>
 {
-    private JsonPathParser.ExpressionContext Parse(string input, out JsonPathParser parser)
+    private JsonPathParser.JsonPathContext Parse(string input, out JsonPathParser parser)
     {
         parser = fixture.CreateParser(input);
-        return parser.expression();
+        return parser.jsonPath();
     }
 
     // VALID: root and property access
@@ -108,6 +108,26 @@ public class JsonPathGrammarTests(AntlrFixture<JsonPathLexer, JsonPathParser> fi
         Assert.Equal(0, parser.NumberOfSyntaxErrors);
     }
 
+    // VALID: array slices (RFC 9535 §2.6)
+    [Theory]
+    [InlineData("$.a[1:3]")]
+    [InlineData("$.a[1:]")]
+    [InlineData("$.a[:3]")]
+    [InlineData("$.a[:]")]
+    [InlineData("$.a[::2]")]
+    [InlineData("$.a[-3:]")]
+    [InlineData("$.a[:-1]")]
+    [InlineData("$.a[1:10:2]")]
+    [InlineData("$[1:3]")]
+    [InlineData("$['a'][1:2]")]
+    [InlineData("$..book[1:2]")]
+    public void ParsesArraySlices(string input)
+    {
+        var context = Parse(input, out var parser);
+        Assert.NotNull(context);
+        Assert.Equal(0, parser.NumberOfSyntaxErrors);
+    }
+
     // INVALID: general syntax violations
     [Theory]
 
@@ -135,19 +155,24 @@ public class JsonPathGrammarTests(AntlrFixture<JsonPathLexer, JsonPathParser> fi
     [InlineData("$..")]
     [InlineData("$..book..")]
     [InlineData("$..*['a']")] // recursive segment must have one selector
+    [InlineData("$..*[1:2]")] // descent as flattened results, not an object/array so no slicing
+    [InlineData("$..*[1:2:3]")] // same reason
     [InlineData("$...book")] // triple dot nonsense
 
-    // slices and filters (TODO: don't forget to implement!)
-    [InlineData("$.book[1:3]")]
-    [InlineData("$.book[:3]")]
-    [InlineData("$.book[::2]")]
-    [InlineData("$.book[1:3:2]")]
-    [InlineData("$.book[?()]")]
-    [InlineData("$.book[??@.price]")]
+    // INVALID: array slice syntax
+    [InlineData("$.a[1:2:3:4]")] // too many colons
+    [InlineData("$.a[1::]")] // missing end after first colon
+    [InlineData("$.a[1:2,3:4]")] // commas not allowed
+    [InlineData("$.a[1:two]")] // non-numeric literal
+    [InlineData("$.a[:1.5]")] // floats not allowed
+    [InlineData("$.a[-1:2:0]")] // start cannot be negative
+    [InlineData("$.a[1:2:0]")] // step cannot be zero
+    [InlineData("$.a[: :]")] // whitespace not allowed
+    [InlineData("$.a[::]")]
     public void RejectsInvalidSyntax(string input)
     {
         var parser = fixture.CreateParser(input);
-        parser.expression();
+        parser.jsonPath();
         Assert.NotEqual(0, parser.NumberOfSyntaxErrors);
     }
 }

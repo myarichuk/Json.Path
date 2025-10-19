@@ -33,6 +33,7 @@ FALSE : 'false' ;
 NULL : 'null' ;
 
 // numbers --> RFC 8259
+INTEGER: '-'? INT;
 NUMBER : '-'? INT ('.' [0-9]+)? EXP?;
 
 fragment INT : '0' | [1-9] [0-9]* ;
@@ -52,7 +53,7 @@ COMMENT : '//' ~[\r\n]* -> skip ;
 
 // grammar
 
-expression: ROOT indexer* segment* EOF;
+jsonPath: ROOT indexer* segment* EOF;
 // note, just "$" means whole doc, that is why "segments*"
 
 segment
@@ -64,5 +65,7 @@ segment
     ;
     
 indexer: 
-      LBRACKET SUB? index = NUMBER RBRACKET           #NumberIndex
-    | LBRACKET STAR RBRACKET                          #WildcardIndex;
+      LBRACKET index = INTEGER RBRACKET                                                                                #NumberIndex
+    | LBRACKET STAR RBRACKET                                                                                               #WildcardIndex
+    | LBRACKET (start = INTEGER)? COLON (end = INTEGER)? ({ this.InputStream.LA(1) == JsonPathLexer.COLON && this.InputStream.LA(2) == JsonPathLexer.INTEGER }?COLON step = INTEGER { Int32.Parse(($step)?.Text ?? "0") != 0 }?)? RBRACKET #SliceIndex
+    ;
