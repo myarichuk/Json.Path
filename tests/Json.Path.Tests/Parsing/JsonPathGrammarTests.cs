@@ -16,7 +16,6 @@ public class JsonPathGrammarTests(AntlrFixture<JsonPathLexer, JsonPathParser> fi
     // VALID: root and property access
     [Theory]
     [InlineData("$")]
-    [InlineData("$store")]
     [InlineData("$.store")]
     [InlineData("$['store']")]
     [InlineData("$['store'].book")]
@@ -34,7 +33,11 @@ public class JsonPathGrammarTests(AntlrFixture<JsonPathLexer, JsonPathParser> fi
     [InlineData("$.book[123]")]
     [InlineData("$['book'][0]")]
     [InlineData("$[0]")]
+    [InlineData("$[0]['book']")]
+    [InlineData("$[0].book")]
     [InlineData("$[*]")]
+    [InlineData("$[*]['book']")]
+    [InlineData("$[*].book")]
     public void ParsesArrayIndexers(string input)
     {
         var context = Parse(input, out var parser);
@@ -83,6 +86,7 @@ public class JsonPathGrammarTests(AntlrFixture<JsonPathLexer, JsonPathParser> fi
     [InlineData("$['weird\\'name']")]
     [InlineData("$['escaped\\\"quote']")]
     [InlineData("$['unicode\\u0041']")]
+    [InlineData("$['']")]
     public void ParsesBracketNotationProperties(string input)
     {
         var context = Parse(input, out var parser);
@@ -93,7 +97,7 @@ public class JsonPathGrammarTests(AntlrFixture<JsonPathLexer, JsonPathParser> fi
     // VALID: deeply chained segments
     [Theory]
     [InlineData("$.store.book[0]['title']")]
-    [InlineData("$store.book[0].author")]
+    [InlineData("$.store.book[0].author")]
     [InlineData("$['store'].book[0]['title']")]
     [InlineData("$.a.b.c.d.e.f.g.h.i.j.k")]
     [InlineData("$['a']['b']['c']['d']['e']['f']['g']")]
@@ -107,9 +111,10 @@ public class JsonPathGrammarTests(AntlrFixture<JsonPathLexer, JsonPathParser> fi
     // INVALID: general syntax violations
     [Theory]
 
-    // dot-before-bracket mix
     [InlineData("$.book.*[0].['a']")]
     [InlineData("$.store.['book']")]
+    [InlineData("$store")]
+    [InlineData("$store.book[0].author")]
 
     // invalid index content
     [InlineData("$.book[notanumber]")]
@@ -124,7 +129,6 @@ public class JsonPathGrammarTests(AntlrFixture<JsonPathLexer, JsonPathParser> fi
     [InlineData("$['a',]")]
     [InlineData("$[]")]
     [InlineData("$.book[]")]
-    [InlineData("$['']")]
 
     // bad recursive descent usage
     [InlineData("$.book..")]
@@ -133,7 +137,7 @@ public class JsonPathGrammarTests(AntlrFixture<JsonPathLexer, JsonPathParser> fi
     [InlineData("$..*['a']")] // recursive segment must have one selector
     [InlineData("$...book")] // triple dot nonsense
 
-    // slices and filters not yet implemented
+    // slices and filters (TODO: don't forget to implement!)
     [InlineData("$.book[1:3]")]
     [InlineData("$.book[:3]")]
     [InlineData("$.book[::2]")]

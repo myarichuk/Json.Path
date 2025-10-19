@@ -15,9 +15,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Antlr4 Include="Parsing/JsonPathTest.g4">
-      <Package>Json.Path.Parsing</Package>
-    </Antlr4>
     <Antlr4 Include="Parsing/JsonPath.g4">
       <Package>Json.Path.Parsing</Package>
     </Antlr4>      
