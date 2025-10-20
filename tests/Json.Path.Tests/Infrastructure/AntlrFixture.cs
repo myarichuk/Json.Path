@@ -9,7 +9,7 @@ public class AntlrFixture<TLexer, TParser>
     where TLexer : Lexer
     where TParser : Parser
 {
-    public TLexer CreateLexer(string input)
+    private TLexer CreateLexer(string input)
     {
         ArgumentNullException.ThrowIfNull(input);
 
@@ -19,12 +19,17 @@ public class AntlrFixture<TLexer, TParser>
         return lexer ?? throw new InvalidOperationException($"Unable to create lexer of type {typeof(TLexer)}.");
     }
 
-    public TParser CreateParser(string input)
+    internal TParser CreateParser(string input)
     {
         var lexer = CreateLexer(input);
         var tokenStream = new CommonTokenStream(lexer);
         var parser = (TParser?)Activator.CreateInstance(typeof(TParser), tokenStream);
+
+        Validator = new JsonPathSemanticValidator(tokenStream);
+        parser?.AddParseListener(Validator);
         parser?.ErrorHandler = new TolerantErrorStrategy();
         return parser ?? throw new InvalidOperationException($"Unable to create parser of type {typeof(TParser)}.");
     }
+
+    public JsonPathSemanticValidator Validator { get; private set; }
 }

@@ -48,8 +48,8 @@ STRING
 
 IDENTIFIER : [_\p{L}] [_\p{L}\p{N}]*;
 
-WS : [ \t\r\n]+ -> skip ;
-COMMENT : '//' ~[\r\n]* -> skip ;
+WS : [ \t\r\n]+ -> channel(HIDDEN);
+COMMENT : '//' ~[\r\n]* -> skip;
 
 // grammar
 
@@ -58,14 +58,25 @@ jsonPath: ROOT indexer* segment* EOF;
 
 segment
     : DOT property = IDENTIFIER indexer*                    #PropertyNamed
-    | { !(this.InputStream.LA(-1) == JsonPathLexer.DOT_DOT_STAR) }? LBRACKET property = STRING RBRACKET indexer*  #PropertyBracketed
+    | LBRACKET property = STRING RBRACKET indexer*          #PropertyBracketed
     | DOT STAR indexer*                                     #Wildcard
     | DOT_DOT IDENTIFIER indexer*                           #Recursive
     | DOT_DOT_STAR                                          #RecursiveWildcard
     ;
     
-indexer: 
-      LBRACKET index = INTEGER RBRACKET                                                                                #NumberIndex
-    | LBRACKET STAR RBRACKET                                                                                               #WildcardIndex
-    | LBRACKET (start = INTEGER)? COLON (end = INTEGER)? ({ this.InputStream.LA(1) == JsonPathLexer.COLON && this.InputStream.LA(2) == JsonPathLexer.INTEGER }?COLON step = INTEGER { Int32.Parse(($step)?.Text ?? "0") != 0 }?)? RBRACKET #SliceIndex
+indexer 
+    : LBRACKET index = INTEGER RBRACKET              #NumericIndex
+    | LBRACKET STAR RBRACKET                         #WildcardIndex
+    | LBRACKET slice RBRACKET                        #SliceIndex 
+    | LBRACKET unionItem (COMMA unionItem)+ RBRACKET #UnionIndex                                                                               
+    ;
+    
+unionItem
+    : INTEGER   #IndexSelector
+    | STRING    #PropertyNameSelector
+    | slice     #SliceSelector
+    ;
+    
+slice
+    : startIndex=INTEGER? c1=COLON endIndex=INTEGER? (c2=COLON step=INTEGER)?
     ;

@@ -1,3 +1,4 @@
+using FluentAssertions;
 using Json.Path.Parsing;
 using Json.Path.Tests.Infrastructure;
 using Xunit;
@@ -70,6 +71,27 @@ public class JsonPathGrammarTests(AntlrFixture<JsonPathLexer, JsonPathParser> fi
     [InlineData("$.book..author")]
     [InlineData("$..book..author")]
     public void ParsesRecursiveDescent(string input)
+    {
+        var context = Parse(input, out var parser);
+        Assert.NotNull(context);
+        Assert.Equal(0, parser.NumberOfSyntaxErrors);
+    }
+
+    // VALID: union selectors
+    [Theory]
+    [InlineData("$['title','author']")]
+    [InlineData("$[0,1,2]")]
+    [InlineData("$[0:3,5:7]")]
+    [InlineData("$['title',2:5]")]
+    [InlineData("$[0,'foo',1:3]")]
+    [InlineData("$['', 'empty']")]
+    [InlineData("$['a', 'b', 'c']")]
+    [InlineData("$.store['book','bicycle']")]
+    [InlineData("$..book[0,1]")]
+    [InlineData("$[-3 , -1 ]")] // TODO: check if negative indices allowed by RFC
+    [InlineData("$[0:3, 7]")]
+    [InlineData("$.a[1:2,3:4]")] // TODO: check if two or more slices are allowed in a union
+    public void ParsesUnionSelectors(string input)
     {
         var context = Parse(input, out var parser);
         Assert.NotNull(context);
@@ -162,17 +184,34 @@ public class JsonPathGrammarTests(AntlrFixture<JsonPathLexer, JsonPathParser> fi
     // INVALID: array slice syntax
     [InlineData("$.a[1:2:3:4]")] // too many colons
     [InlineData("$.a[1::]")] // missing end after first colon
-    [InlineData("$.a[1:2,3:4]")] // commas not allowed
     [InlineData("$.a[1:two]")] // non-numeric literal
     [InlineData("$.a[:1.5]")] // floats not allowed
     [InlineData("$.a[-1:2:0]")] // start cannot be negative
     [InlineData("$.a[1:2:0]")] // step cannot be zero
     [InlineData("$.a[: :]")] // whitespace not allowed
     [InlineData("$.a[::]")]
+
+    // INVALID: union syntax
+    [InlineData("$[,1,2]")] // leading comma
+    [InlineData("$[1,2,]")] // trailing comma
+    [InlineData("$[1,,2]")] // empty element
+    [InlineData("$[1:2,]")] // trailing comma after slice
+    [InlineData("$[1 : 2]")] // space around colon
+    [InlineData("$[ 1:2 ]")] // space around numbers
+    [InlineData("$[1:two]")] // non-numeric
+    [InlineData("$[1, @.foo]")] // expression not allowed
+    [InlineData("$['a','b', ]")] // whitespace before trailing comma
+    [InlineData("$[1:2:3:4]")] // too many colons
+    [InlineData("$[1,2 3]")] // missing comma
+    [InlineData("$[*,1]")] // wildcard not allowed in union
+    [InlineData("$[1, true]")] // literal not allowed
+    [InlineData("$['a':2]")] // invalid syntax mixing name and colon
     public void RejectsInvalidSyntax(string input)
     {
         var parser = fixture.CreateParser(input);
         parser.jsonPath();
-        Assert.NotEqual(0, parser.NumberOfSyntaxErrors);
+
+        (parser.NumberOfSyntaxErrors > 0 || fixture.Validator.Errors.Count > 0)
+            .Should().BeTrue("because invalid input should produce either syntax or semantic errors");
     }
 }
