@@ -63,7 +63,6 @@ memberSegment
     : DOT STAR                                #WildcardChildSelection
     | DOT property = IDENTIFIER               #MemberNameChildSelection
     | bracketedSelector                       #BracketedChildSelection
-    | QUESTION /*placeholder for query expr*/ #QueryChildSelection
     ;
 
 descendantMemberSegment
@@ -76,7 +75,9 @@ bracketedSelector: LBRACKET selectors += selector (COMMA selectors += selector)*
 selector
     : property = STRING                                                                            #NameSelector
     | startIndex=INTEGER? c1=COLON endIndex=INTEGER? (c2=COLON step=INTEGER)?                      #SliceSelector
-    | QUESTION /* implement expressions*/                                                          #FilterSelector
+    | query                                                                                        #FilterSelector
     | INTEGER                                                                                      #IndexSelector
     | STAR                                                                                         #WildcardSelector
     ;
+    
+query: QUESTION /* implement expressions*/;

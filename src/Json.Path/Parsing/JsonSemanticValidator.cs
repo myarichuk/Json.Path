@@ -45,36 +45,7 @@ public class JsonPathSemanticValidator(CommonTokenStream tokens) : JsonPathBaseL
         integerToken?.Text is "0" or "+0" or "-0";
 
     #endregion
-
-    public override void ExitJsonPath(JsonPathParser.JsonPathContext ctx)
-    {
-        var segments = ctx.pathSegment();
-        for (var i = 0; i < segments.Length - 1; i++)
-        {
-            if (segments[i] is JsonPathParser.DescendantSegmentContext descendant)
-            {
-                var memberSegment = descendant.descendantMemberSegment();
-
-                if (memberSegment is JsonPathParser.WildcardSegmentContext wildcardSegment && i != segments.Length - 1)
-                {
-                    var nextSegment = segments[i + 1];
-                    if (nextSegment is JsonPathParser.DescendantSegmentContext)
-                    {
-                        Add("InvalidRecursiveWildcard", wildcardSegment.STAR().Symbol,
-                            "Recursive wildcard (`..*`) cannot be followed by another recursive descent segment");                        
-                    }
-                    else if (nextSegment is JsonPathParser.ChildSegmentContext nextChildSegment &&
-                             nextChildSegment.memberSegment() is not JsonPathParser.BracketedChildSelectionContext and not 
-                                 JsonPathParser.QueryChildSelectionContext)
-                    {
-                        Add("InvalidRecursiveWildcard", wildcardSegment.STAR().Symbol,
-                            "Recursive wildcard (`..*`) cannot be followed by anything other than array indexer or a query segment");                         
-                    }
-                }
-            }
-        }
-    }
-
+    
     public override void ExitSliceSelector(JsonPathParser.SliceSelectorContext ctx)
     {
         // no whitespace around any slice tokens (numbers and colons)
