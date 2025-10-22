@@ -31,7 +31,7 @@ public class JsonPathGrammarTests
     {
         var context = Parse(input, out var parser);
         Assert.NotNull(context);
-        Assert.Equal(0, _fixture.SyntaxErrors.Count);
+        Assert.Empty(_fixture.SyntaxErrors);
     }
 
     // VALID: array indexers
@@ -40,6 +40,8 @@ public class JsonPathGrammarTests
     [InlineData("$.book[123]")]
     [InlineData("$['book'][0]")]
     [InlineData("$[0]")]
+    [InlineData("$[-1]")]
+    [InlineData("$.book[-1]")]
     [InlineData("$[0]['book']")]
     [InlineData("$[0].book")]
     [InlineData("$[*]")]
@@ -49,7 +51,7 @@ public class JsonPathGrammarTests
     {
         var context = Parse(input, out var parser);
         Assert.NotNull(context);
-        Assert.Equal(0, _fixture.SyntaxErrors.Count);
+        Assert.Empty(_fixture.SyntaxErrors);
     }
 
     // VALID: wildcards and mixed chaining
@@ -66,7 +68,7 @@ public class JsonPathGrammarTests
     {
         var context = Parse(input, out var parser);
         Assert.NotNull(context);
-        Assert.Equal(0, _fixture.SyntaxErrors.Count);
+        Assert.Empty(_fixture.SyntaxErrors);
     }
 
     // VALID: recursive descent
@@ -84,7 +86,7 @@ public class JsonPathGrammarTests
     {
         var context = Parse(input, out var parser);
         Assert.NotNull(context);
-        Assert.Equal(0, _fixture.SyntaxErrors.Count);
+        Assert.Empty(_fixture.SyntaxErrors);
     }
 
     // VALID: union selectors
@@ -105,7 +107,7 @@ public class JsonPathGrammarTests
     {
         var context = Parse(input, out var parser);
         Assert.NotNull(context);
-        Assert.Equal(0, _fixture.SyntaxErrors.Count);
+        Assert.Empty(_fixture.SyntaxErrors);
     }
 
     // VALID: bracket-notation properties
@@ -124,7 +126,7 @@ public class JsonPathGrammarTests
     {
         var context = Parse(input, out var parser);
         Assert.NotNull(context);
-        Assert.Equal(0, _fixture.SyntaxErrors.Count);
+        Assert.Empty(_fixture.SyntaxErrors);
     }
 
     // VALID: deeply chained segments
@@ -138,7 +140,7 @@ public class JsonPathGrammarTests
     {
         var context = Parse(input, out var parser);
         Assert.NotNull(context);
-        Assert.Equal(0, _fixture.SyntaxErrors.Count);
+        Assert.Empty(_fixture.SyntaxErrors);
     }
 
     // VALID: array slices (RFC 9535 §2.6)

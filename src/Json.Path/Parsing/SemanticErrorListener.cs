@@ -57,7 +57,16 @@ public sealed class SemanticErrorListener(CommonTokenStream tokens) : JsonPathBa
     private static bool IsZeroToken(IToken? t)
         => t?.Text is "0" or "+0" or "-0";
     #endregion
-    
+
+    public override void ExitIndexSelector(JsonPathParser.IndexSelectorContext ctx)
+    {
+        var symbolText = ctx.NUMBER()?.Symbol?.Text;
+        if (symbolText != null && symbolText.StartsWith('-'))
+        {
+            Add("NegativeIndex", ctx.NUMBER().Symbol, "Negative indices are not allowed in index selectors");
+        }
+    }
+
     public override void ExitSliceSelector(JsonPathParser.SliceSelectorContext ctx)
     {
         void CheckNoWs(IToken? t)
