@@ -6,10 +6,14 @@ using System.Runtime.CompilerServices;
 using Antlr4.Runtime;
 using Antlr4.Runtime.Misc;
 
+// ReSharper disable NotAccessedPositionalProperty.Global
 // ReSharper disable PossibleMultipleEnumeration
 namespace Json.Path.Parsing;
 
-public record struct SemanticError(string Code, string Message, Interval Span);
+public record struct SemanticError(
+    string Code,
+    string Message,
+    Interval Span);
 
 // A listener that inspects the parse tree and uses the token stream to check RFC constraints
 public sealed class SemanticErrorListener(CommonTokenStream tokens) : JsonPathBaseListener
@@ -17,7 +21,7 @@ public sealed class SemanticErrorListener(CommonTokenStream tokens) : JsonPathBa
     private static readonly HashSet<string> KnownFunctions = new(StringComparer.InvariantCultureIgnoreCase) 
         { "length", "count", "match", "search", "value" };
 
-    private readonly List<SemanticError> _errors = new();
+    private readonly List<SemanticError> _errors = [];
     public IReadOnlyList<SemanticError> Errors => _errors;
 
     #region Helpers
@@ -53,7 +57,7 @@ public sealed class SemanticErrorListener(CommonTokenStream tokens) : JsonPathBa
     private static bool IsZeroToken(IToken? t)
         => t?.Text is "0" or "+0" or "-0";
     #endregion
-
+    
     public override void ExitSliceSelector(JsonPathParser.SliceSelectorContext ctx)
     {
         void CheckNoWs(IToken? t)
@@ -128,8 +132,11 @@ public sealed class SemanticErrorListener(CommonTokenStream tokens) : JsonPathBa
             case "match" or "search" when argCount != 2:
                     Add("FunctionsParamCount", ctx.function, $"Function '{functionName}' expects exactly two arguments");
                 break;
+            case "match" or "search" 
+                when ctx._params?.ElementAtOrDefault(1) is not JsonPathParser.StringLiteralExpressionContext:
+                    Add("FunctionArgType", ctx.function, $"Function '{functionName}' second argument must be a string literal");
+                break;            
         }
-        
         
         // whitespace validations
         var lp = ctx.LPAREN().Symbol;
@@ -155,7 +162,7 @@ public sealed class SemanticErrorListener(CommonTokenStream tokens) : JsonPathBa
                 dseg.descendantMemberSegment() is JsonPathParser.WildcardSegmentContext wild)
             {
                 Add("InvalidRecursiveWildcard", wild.STAR().Symbol,
-                    "Recursive wildcard (`..*`) must terminate the path");
+                    "Recursive wildcard ('..*') must terminate the path");
             }
         }
     }
@@ -165,7 +172,7 @@ public sealed class SemanticErrorListener(CommonTokenStream tokens) : JsonPathBa
         var selectors = ctx._selectors;
         if (selectors.Count == 0)
         {
-            Add("EmptyUnion", ctx.LBRACKET().Symbol, "Empty union `[]` is not allowed");
+            Add("EmptyUnion", ctx.LBRACKET().Symbol, "Empty union '[]' is not allowed");
         }
 
         // mixed name and index unions should not occur --> $['a',1]
