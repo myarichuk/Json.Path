@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Antlr4.Runtime.Tree;
 using FluentAssertions;
 using Json.Path.Parsing;
@@ -6,12 +7,14 @@ using Xunit;
 
 namespace Json.Path.Tests.Parsing;
 
-public class JsonPathGrammarTests(AntlrFixture<JsonPathLexer, JsonPathParser> fixture)
-    : IClassFixture<AntlrFixture<JsonPathLexer, JsonPathParser>>
+[SuppressMessage("StyleCop.CSharp.OrderingRules", "SA1202:Elements should be ordered by access", Justification = "Testing code, don't care")]
+public class JsonPathGrammarTests
 {
+    private readonly AntlrFixture<JsonPathLexer, JsonPathParser> _fixture = new();
+
     private JsonPathParser.JsonPathContext Parse(string input, out JsonPathParser parser)
     {
-        parser = fixture.CreateParser(input);
+        parser = _fixture.CreateParser(input);
         return parser.jsonPath();
     }
 
@@ -28,7 +31,7 @@ public class JsonPathGrammarTests(AntlrFixture<JsonPathLexer, JsonPathParser> fi
     {
         var context = Parse(input, out var parser);
         Assert.NotNull(context);
-        Assert.Equal(0, parser.NumberOfSyntaxErrors);
+        Assert.Empty(_fixture.SyntaxErrors);
     }
 
     // VALID: array indexers
@@ -37,6 +40,8 @@ public class JsonPathGrammarTests(AntlrFixture<JsonPathLexer, JsonPathParser> fi
     [InlineData("$.book[123]")]
     [InlineData("$['book'][0]")]
     [InlineData("$[0]")]
+    [InlineData("$[-1]")]
+    [InlineData("$.book[-1]")]
     [InlineData("$[0]['book']")]
     [InlineData("$[0].book")]
     [InlineData("$[*]")]
@@ -46,7 +51,7 @@ public class JsonPathGrammarTests(AntlrFixture<JsonPathLexer, JsonPathParser> fi
     {
         var context = Parse(input, out var parser);
         Assert.NotNull(context);
-        Assert.Equal(0, parser.NumberOfSyntaxErrors);
+        Assert.Empty(_fixture.SyntaxErrors);
     }
 
     // VALID: wildcards and mixed chaining
@@ -63,23 +68,25 @@ public class JsonPathGrammarTests(AntlrFixture<JsonPathLexer, JsonPathParser> fi
     {
         var context = Parse(input, out var parser);
         Assert.NotNull(context);
-        Assert.Equal(0, parser.NumberOfSyntaxErrors);
+        Assert.Empty(_fixture.SyntaxErrors);
     }
 
     // VALID: recursive descent
     [Theory]
     [InlineData("$..author")]
     [InlineData("$..*")]
+    [InlineData("$..* ")] // trailing whitespace (silly but still..)
     [InlineData("$..['book']['title']..*")]
-    [InlineData("$..[0]")] // looks bit weird but valid according to RFC
+    [InlineData("$..[0]")] // looks a bit weird but valid according to RFC
     [InlineData("$..book[0]")]
     [InlineData("$.book..author")]
     [InlineData("$..book..author")]
+    [InlineData("$.book..*")]
     public void ParsesRecursiveDescent(string input)
     {
         var context = Parse(input, out var parser);
         Assert.NotNull(context);
-        Assert.Equal(0, parser.NumberOfSyntaxErrors);
+        Assert.Empty(_fixture.SyntaxErrors);
     }
 
     // VALID: union selectors
@@ -100,7 +107,7 @@ public class JsonPathGrammarTests(AntlrFixture<JsonPathLexer, JsonPathParser> fi
     {
         var context = Parse(input, out var parser);
         Assert.NotNull(context);
-        Assert.Equal(0, parser.NumberOfSyntaxErrors);
+        Assert.Empty(_fixture.SyntaxErrors);
     }
 
     // VALID: bracket-notation properties
@@ -119,7 +126,7 @@ public class JsonPathGrammarTests(AntlrFixture<JsonPathLexer, JsonPathParser> fi
     {
         var context = Parse(input, out var parser);
         Assert.NotNull(context);
-        Assert.Equal(0, parser.NumberOfSyntaxErrors);
+        Assert.Empty(_fixture.SyntaxErrors);
     }
 
     // VALID: deeply chained segments
@@ -133,7 +140,7 @@ public class JsonPathGrammarTests(AntlrFixture<JsonPathLexer, JsonPathParser> fi
     {
         var context = Parse(input, out var parser);
         Assert.NotNull(context);
-        Assert.Equal(0, parser.NumberOfSyntaxErrors);
+        Assert.Empty(_fixture.SyntaxErrors);
     }
 
     // VALID: array slices (RFC 9535 §2.6)
@@ -151,9 +158,48 @@ public class JsonPathGrammarTests(AntlrFixture<JsonPathLexer, JsonPathParser> fi
     [InlineData("$..book[1:2]")]
     public void ParsesArraySlices(string input)
     {
+        var context = Parse(input, out _);
+        Assert.NotNull(context);
+        _fixture.SyntaxErrors.Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData("$[?(@.price < 10)]")]
+    [InlineData("$[?(@.price <= 10)]")]
+    [InlineData("$[?(@.price > 0 && @.price < 100)]")]
+    [InlineData("$[?(@.category == 'fiction')]")]
+    [InlineData("$[?(@.category != 'fiction' || @.category == 'sci-fi')]")]
+    [InlineData("$[?(@.available == true)]")]
+    [InlineData("$[?(@.rating >= 4.5)]")]
+    [InlineData("$[?(@.name ~= 'Book.*')]")]
+    [InlineData("$[?(!@.deleted)]")]
+    [InlineData("$[?(length(@.book) > 0)]")]
+    [InlineData("$[?((@.a + 1) * 2 < 10)]")]
+    [InlineData("$[?(@.a + @.b * 2 < 10)]")]
+    [InlineData("$[?(@.a == null)]")]
+    public void ParsesValidExpressionsInFilters(string input)
+    {
         var context = Parse(input, out var parser);
         Assert.NotNull(context);
-        Assert.Equal(0, parser.NumberOfSyntaxErrors);
+        _fixture.SyntaxErrors.Count.Should().Be(0);
+        _fixture.SemanticErrors.Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData("$..*['a']")]
+    [InlineData("$..*.a")]
+    [InlineData("$..*..a")]
+    [InlineData("$..*['a','b']")]
+    [InlineData("$..*['a'][0]")]
+    [InlineData("$..*.book[0]")]
+    [InlineData("$.book..*['a']")]
+    public void RejectsRecursiveWildcardFollowedByAnySegment(string input)
+    {
+        Parse(input, out _);
+        _fixture.SemanticErrors.Should()
+            .ContainSingle(
+                e => e.Code == "InvalidRecursiveWildcard",
+                "RFC forbids any path segment following a recursive wildcard");
     }
 
     // INVALID: general syntax violations
@@ -208,12 +254,70 @@ public class JsonPathGrammarTests(AntlrFixture<JsonPathLexer, JsonPathParser> fi
     [InlineData("$[1,2 3]")] // missing comma
     [InlineData("$[1, true]")] // literal not allowed
     [InlineData("$['a':2]")] // invalid syntax mixing name and colon
+    [InlineData("$.a[]")] // empty array initializer
     public void RejectsInvalidSyntax(string input)
     {
-        var parser = fixture.CreateParser(input);
-        var ctx = parser.jsonPath();
-        var ast = Trees.ToStringTree(ctx, parser);
-        (parser.NumberOfSyntaxErrors > 0 || fixture.Validator!.Errors.Count > 0)
+        var parser = _fixture.CreateParser(input);
+        parser.jsonPath();
+
+        // var ctx = parser.jsonPath();
+        // var ast = Trees.ToStringTree(ctx, parser);
+        (parser.NumberOfSyntaxErrors > 0 || _fixture.SyntaxErrors.Count > 0 || _fixture.SemanticErrors.Count > 0)
             .Should().BeTrue("because invalid input should produce either syntax or semantic errors");
+    }
+
+    [Theory]
+    [InlineData("$[1.0:2]")]
+    [InlineData("$[1e2:3]")]
+    [InlineData("$[1:2.5]")]
+    [InlineData("$[1:2e3]")]
+    public void RejectsFloatOrExponentSliceIndices(string input)
+    {
+        Parse(input, out _);
+        _fixture.SemanticErrors.Should()
+            .Contain(e => e.Code.StartsWith("SliceNonInteger"));
+    }
+
+    [Theory]
+    [InlineData("$[1:2:0]")]
+    [InlineData("$[:3:0]")]
+    [InlineData("$[::0]")]
+    public void RejectsZeroStep(string input)
+    {
+        Parse(input, out _);
+        _fixture.SemanticErrors.Should()
+            .ContainSingle(e => e.Code == "SliceZeroStep");
+    }
+
+    [Theory]
+    [InlineData("$['a',1]")]
+    [InlineData("$['foo',2:5]")]
+    [InlineData("$[1,'bar']")]
+    [InlineData("$.a['name', 0]")]
+    public void RejectsMixedUnions(string input)
+    {
+        Parse(input, out var parser);
+        _fixture.SemanticErrors.Should()
+            .ContainSingle(e => e.Code == "MixedUnion");
+    }
+
+    [Theory]
+    [InlineData("$.length(@.foo)")]
+    [InlineData("$.count(1, 2, 3)")]
+    public void AcceptsCorrectFunctionCallFormatting(string input)
+    {
+        _ = Parse(input, out _);
+        _fixture.SemanticErrors.Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData("$[1e+]")] // incomplete exponent
+    [InlineData("$[--1]")]
+    [InlineData("$[1..2]")]
+    public void RejectsMalformedNumbers(string input)
+    {
+        var parser = _fixture.CreateParser(input);
+        parser.jsonPath();
+        parser.NumberOfSyntaxErrors.Should().BeGreaterThan(0);
     }
 }

@@ -13,7 +13,7 @@ COLON : ':' ;
 COMMA : ',' ;
 QUESTION : '?' ;
 STAR : '*' ;
-
+REGEX: '~=';
 EQ : '==' ;
 NE : '!=' ;
 LE : '<=' ;
@@ -32,10 +32,11 @@ FALSE : 'false' ;
 NULL : 'null' ;
 
 // numbers --> RFC 8259
-INTEGER: '-'? NUMBER;
-FLOAT : '-'? NUMBER (DOT [0-9]+)? EXP?;
+NUMBER
+    : '-'? INT ('.' [0-9]+)? ([Ee][+\-]?[0-9]+)?
+    ;
 
-fragment NUMBER : '0' | [1-9] [0-9]* ;
+fragment INT: '0' | [1-9] [0-9]*;
 fragment EXP : [Ee] [+\-]? [0-9]+ ;
 fragment HEX : [0-9a-fA-F] ;
 
@@ -63,7 +64,6 @@ memberSegment
     : DOT STAR                                #WildcardChildSelection
     | DOT property = IDENTIFIER               #MemberNameChildSelection
     | bracketedSelector                       #BracketedChildSelection
-    | QUESTION /*placeholder for query expr*/ #QueryChildSelection
     ;
 
 descendantMemberSegment
@@ -75,8 +75,31 @@ bracketedSelector: LBRACKET selectors += selector (COMMA selectors += selector)*
 
 selector
     : property = STRING                                                                            #NameSelector
-    | startIndex=INTEGER? c1=COLON endIndex=INTEGER? (c2=COLON step=INTEGER)?                      #SliceSelector
-    | QUESTION /* implement expressions*/                                                          #FilterSelector
-    | INTEGER                                                                                      #IndexSelector
+    | startIndex=NUMBER? c1=COLON endIndex=NUMBER? (c2=COLON step=NUMBER)?                         #SliceSelector
+    | query                                                                                        #FilterSelector
+    | NUMBER                                                                                       #IndexSelector
     | STAR                                                                                         #WildcardSelector
     ;
+    
+query: QUESTION LPAREN expression RPAREN;
+
+expression
+    : <assoc=right> NOT expression                                               #NotExpression
+    | expression REGEX STRING                                                    #RegexExpression
+    | expression op=(STAR | DIV | MOD) right=expression                          #MulDivExpression
+    | expression op=(ADD | SUB) right=expression                                 #AddSubExpression
+    | expression op=(GE | GT | LE | LT) right=expression                         #ComparisonExpression
+    | expression op=(EQ | NE) right=expression                                   #EqualityExpression
+    | expression op=AND right=expression                                         #AndExpression
+    | expression op=OR right=expression                                          #OrExpression
+    | (ROOT | CURRENT) pathSegment+                                              #PathExpression
+    | function=IDENTIFIER LPAREN (params+=expression (COMMA params+=expression)*)? RPAREN #FunctionExpression
+    | TRUE                                                                      #TrueLiteralExpression
+    | FALSE                                                                     #FalseLiteralExpression
+    | NULL                                                                      #NullLiteralExpression
+    | STRING                                                                    #StringLiteralExpression
+    | NUMBER                                                                    #NumericLiteralExpression
+    | LPAREN expression RPAREN                                                  #ParenthesisExpression
+    ;
+   
+    
