@@ -168,7 +168,7 @@ public sealed class SemanticErrorListener(CommonTokenStream tokens) : JsonPathBa
             Add("EmptyUnion", ctx.LBRACKET().Symbol, "Empty union `[]` is not allowed");
         }
 
-        // Mixed name and index unions forbidden: e.g. $['a',1]
+        // mixed name and index unions should not occur --> $['a',1]
         bool hasName = selectors.Any(s => s is JsonPathParser.NameSelectorContext);
         bool hasIndex = selectors.Any(s => s is JsonPathParser.IndexSelectorContext);
         bool hasSlice = selectors.Any(s => s is JsonPathParser.SliceSelectorContext);
