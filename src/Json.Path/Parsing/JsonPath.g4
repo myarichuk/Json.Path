@@ -3,7 +3,6 @@
 
 ROOT : '$' ;
 CURRENT : '@' ;
-DOT_DOT_STAR: '..*';
 DOT_DOT : '..' ; // lexer is greedy so first try to match this
 DOT : '.' ;
 LBRACKET : '[' ;
@@ -33,12 +32,11 @@ FALSE : 'false' ;
 NULL : 'null' ;
 
 // numbers --> RFC 8259
-INTEGER: '-'? INT;
-NUMBER : '-'? INT ('.' [0-9]+)? EXP?;
+INTEGER: '-'? NUMBER;
+FLOAT : '-'? NUMBER (DOT [0-9]+)? EXP?;
 
-fragment INT : '0' | [1-9] [0-9]* ;
+fragment NUMBER : '0' | [1-9] [0-9]* ;
 fragment EXP : [Ee] [+\-]? [0-9]+ ;
-fragment ESC : '\\' ( ["'\\/bfnrt] | 'u' HEX HEX HEX HEX );
 fragment HEX : [0-9a-fA-F] ;
 
 STRING
@@ -53,30 +51,32 @@ COMMENT : '//' ~[\r\n]* -> skip;
 
 // grammar
 
-jsonPath: ROOT indexer* segment* EOF;
-// note, just "$" means whole doc, that is why "segments*"
+// RFC specifies either "normalized path" or "regular" path with all the bells and whistles
+// But - because "normalized path" is a subset we do not treat it as separate grammar
+jsonPath: ROOT pathSegment* EOF;
 
-segment
-    : DOT property = IDENTIFIER indexer*                    #PropertyNamed
-    | LBRACKET property = STRING RBRACKET indexer*          #PropertyBracketed
-    | DOT STAR indexer*                                     #Wildcard
-    | DOT_DOT IDENTIFIER indexer*                           #Recursive
-    | DOT_DOT_STAR                                          #RecursiveWildcard
+pathSegment
+    : memberSegment             #ChildSegment
+    | descendantMemberSegment   #DescendantSegment
     ;
-    
-indexer 
-    : LBRACKET index = INTEGER RBRACKET              #NumericIndex
-    | LBRACKET STAR RBRACKET                         #WildcardIndex
-    | LBRACKET slice RBRACKET                        #SliceIndex 
-    | LBRACKET unionItem (COMMA unionItem)+ RBRACKET #UnionIndex                                                                               
+memberSegment
+    : DOT STAR                                #WildcardChildSelection
+    | DOT property = IDENTIFIER               #MemberNameChildSelection
+    | bracketedSelector                       #BracketedChildSelection
+    | QUESTION /*placeholder for query expr*/ #QueryChildSelection
     ;
-    
-unionItem
-    : INTEGER   #IndexSelector
-    | STRING    #PropertyNameSelector
-    | slice     #SliceSelector
+
+descendantMemberSegment
+    : DOT_DOT STAR                                       #WildcardSegment
+    | DOT_DOT (property=IDENTIFIER | bracketedSelector)  #SelectorSegment
     ;
-    
-slice
-    : startIndex=INTEGER? c1=COLON endIndex=INTEGER? (c2=COLON step=INTEGER)?
+  
+bracketedSelector: LBRACKET selectors += selector (COMMA selectors += selector)* RBRACKET;
+
+selector
+    : property = STRING                                                                            #NameSelector
+    | startIndex=INTEGER? c1=COLON endIndex=INTEGER? (c2=COLON step=INTEGER)?                      #SliceSelector
+    | QUESTION /* implement expressions*/                                                          #FilterSelector
+    | INTEGER                                                                                      #IndexSelector
+    | STAR                                                                                         #WildcardSelector
     ;

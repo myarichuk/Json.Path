@@ -1,3 +1,4 @@
+using Antlr4.Runtime.Tree;
 using FluentAssertions;
 using Json.Path.Parsing;
 using Json.Path.Tests.Infrastructure;
@@ -19,8 +20,10 @@ public class JsonPathGrammarTests(AntlrFixture<JsonPathLexer, JsonPathParser> fi
     [InlineData("$")]
     [InlineData("$.store")]
     [InlineData("$['store']")]
-    [InlineData("$['store'].book")]
     [InlineData("$.store['book']")]
+    [InlineData("$['store'].book")]
+    [InlineData("$['store.abc'].book")]
+    [InlineData("$.store['book.abc']")]
     public void ParsesSimpleRootAndPropertyAccess(string input)
     {
         var context = Parse(input, out var parser);
@@ -67,6 +70,8 @@ public class JsonPathGrammarTests(AntlrFixture<JsonPathLexer, JsonPathParser> fi
     [Theory]
     [InlineData("$..author")]
     [InlineData("$..*")]
+    [InlineData("$..['book']['title']..*")]
+    [InlineData("$..[0]")] // looks bit weird but valid according to RFC
     [InlineData("$..book[0]")]
     [InlineData("$.book..author")]
     [InlineData("$..book..author")]
@@ -109,6 +114,7 @@ public class JsonPathGrammarTests(AntlrFixture<JsonPathLexer, JsonPathParser> fi
     [InlineData("$['escaped\\\"quote']")]
     [InlineData("$['unicode\\u0041']")]
     [InlineData("$['']")]
+    [InlineData("$['[0]']")] // looks weird but it should be valid
     public void ParsesBracketNotationProperties(string input)
     {
         var context = Parse(input, out var parser);
@@ -161,6 +167,7 @@ public class JsonPathGrammarTests(AntlrFixture<JsonPathLexer, JsonPathParser> fi
     // invalid index content
     [InlineData("$.book[notanumber]")]
     [InlineData("$.book[01]")] // leading zero violates RFC
+    [InlineData("$.book[-01]")] // also "negative" leading zero violates RFC
     [InlineData("$[notanumber]")]
 
     // unterminated or malformed strings
@@ -176,9 +183,6 @@ public class JsonPathGrammarTests(AntlrFixture<JsonPathLexer, JsonPathParser> fi
     [InlineData("$.book..")]
     [InlineData("$..")]
     [InlineData("$..book..")]
-    [InlineData("$..*['a']")] // recursive segment must have one selector
-    [InlineData("$..*[1:2]")] // descent as flattened results, not an object/array so no slicing
-    [InlineData("$..*[1:2:3]")] // same reason
     [InlineData("$...book")] // triple dot nonsense
 
     // INVALID: array slice syntax
@@ -188,7 +192,6 @@ public class JsonPathGrammarTests(AntlrFixture<JsonPathLexer, JsonPathParser> fi
     [InlineData("$.a[:1.5]")] // floats not allowed
     [InlineData("$.a[-1:2:0]")] // start cannot be negative
     [InlineData("$.a[1:2:0]")] // step cannot be zero
-    [InlineData("$.a[: :]")] // whitespace not allowed
     [InlineData("$.a[::]")]
 
     // INVALID: union syntax
@@ -203,15 +206,14 @@ public class JsonPathGrammarTests(AntlrFixture<JsonPathLexer, JsonPathParser> fi
     [InlineData("$['a','b', ]")] // whitespace before trailing comma
     [InlineData("$[1:2:3:4]")] // too many colons
     [InlineData("$[1,2 3]")] // missing comma
-    [InlineData("$[*,1]")] // wildcard not allowed in union
     [InlineData("$[1, true]")] // literal not allowed
     [InlineData("$['a':2]")] // invalid syntax mixing name and colon
     public void RejectsInvalidSyntax(string input)
     {
         var parser = fixture.CreateParser(input);
-        parser.jsonPath();
-
-        (parser.NumberOfSyntaxErrors > 0 || fixture.Validator.Errors.Count > 0)
+        var ctx = parser.jsonPath();
+        var ast = Trees.ToStringTree(ctx, parser);
+        (parser.NumberOfSyntaxErrors > 0 || fixture.Validator!.Errors.Count > 0)
             .Should().BeTrue("because invalid input should produce either syntax or semantic errors");
     }
 }
