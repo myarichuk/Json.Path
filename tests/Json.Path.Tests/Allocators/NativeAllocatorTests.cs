@@ -1,4 +1,4 @@
-using JsonPath.Parser.Allocator;
+using JsonPath.Parser.Allocators;
 using Xunit;
 
 namespace Json.Path.Tests;
@@ -17,8 +17,8 @@ public unsafe class NativeAllocatorTests
         Assert.NotEqual(IntPtr.Zero, (IntPtr)ptr);
 
         var span = new Span<byte>(ptr, (int)PageSize);
-        span.Fill(0xAB);
-        Assert.All(span[..64].ToArray(), b => Assert.Equal(0xAB, b));
+        span.Fill(0xDE);
+        Assert.All(span[..64].ToArray(), b => Assert.Equal(0xDE, b));
 
         NativeAllocator.Free(ptr, backend);
     }
