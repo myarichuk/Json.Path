@@ -6,6 +6,7 @@
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);SA0001</NoWarn>
     <LangVersion>preview</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
@@ -22,5 +23,6 @@
 
   <ItemGroup>
     <ProjectReference Include="../../src/Json.Path/Json.Path.csproj" />
+    <ProjectReference Include="..\..\src\JsonPath.Parser\JsonPath.Parser.csproj" />
   </ItemGroup>
 </Project>
