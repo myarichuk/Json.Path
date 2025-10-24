@@ -18,9 +18,13 @@ namespace JsonPath.Parser.Lexer
     public enum TokenKind : byte
     {
         Unknown,
+
         Eof,
+
         Identifier,
+
         Number,
+
         String,
 
         [TokenString("$")]
@@ -29,11 +33,11 @@ namespace JsonPath.Parser.Lexer
         [TokenString("@")]
         Current,
 
-        [TokenString(".")]
-        Dot,
-
         [TokenString("..")]
         DotDot,
+
+        [TokenString(".")]
+        Dot,
 
         [TokenString("[")]
         LBracket,
@@ -68,17 +72,17 @@ namespace JsonPath.Parser.Lexer
         [TokenString("!=")]
         Ne,
 
-        [TokenString("<")]
-        Lt,
-
         [TokenString("<=")]
         Le,
 
-        [TokenString(">")]
-        Gt,
+        [TokenString("<")]
+        Lt,
 
         [TokenString(">=")]
         Ge,
+
+        [TokenString(">")]
+        Gt,
 
         [TokenString("&&")]
         And,

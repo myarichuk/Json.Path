@@ -5,7 +5,7 @@ using Xunit;
 
 namespace Json.Path.Tests.Lexing;
 
-public class TokenListTests : IDisposable
+public class ArenaListTests : IDisposable
 {
     // small to force growth quickly
     private readonly ArenaAllocator _arena = new(1024);
@@ -13,7 +13,7 @@ public class TokenListTests : IDisposable
     [Fact]
     public void Add_SingleToken_ShouldStoreCorrectly()
     {
-        var list = new TokenList(_arena);
+        var list = new ArenaList<Token>(_arena);
         var tok = new Token(TokenKind.Dot, 5, 1, 1, 6);
 
         list.Add(tok);
@@ -28,7 +28,7 @@ public class TokenListTests : IDisposable
     [Fact]
     public void Add_MultipleTokens_ShouldBeSequential()
     {
-        var list = new TokenList(_arena);
+        var list = new ArenaList<Token>(_arena);
         for (int i = 0; i < 10; i++)
         {
             list.Add(new Token(TokenKind.Number, i * 2, 1, 1, i));
@@ -48,7 +48,7 @@ public class TokenListTests : IDisposable
     [Fact]
     public void Add_WhenExceedingCapacity_ShouldGrowAndPreserveContents()
     {
-        var list = new TokenList(_arena, initialCapacity: 2);
+        var list = new ArenaList<Token>(_arena, initialCapacity: 2);
         list.Add(new Token(TokenKind.Root, 0, 1, 1, 1));
         list.Add(new Token(TokenKind.Current, 1, 1, 1, 2));
 
@@ -65,7 +65,7 @@ public class TokenListTests : IDisposable
     [Fact]
     public void AsSpan_ShouldReflectAllAddedTokens()
     {
-        var list = new TokenList(_arena, initialCapacity: 4);
+        var list = new ArenaList<Token>(_arena, initialCapacity: 4);
         for (int i = 0; i < 4; i++)
         {
             list.Add(new Token(TokenKind.Identifier, i, 1, 1, i + 1));
@@ -83,7 +83,7 @@ public class TokenListTests : IDisposable
     [Fact]
     public void Add_LargeNumberOfTokens_ShouldHandleGracefully()
     {
-        var list = new TokenList(_arena, initialCapacity: 4);
+        var list = new ArenaList<Token>(_arena, initialCapacity: 4);
         const int total = 10_000;
 
         for (int i = 0; i < total; i++)

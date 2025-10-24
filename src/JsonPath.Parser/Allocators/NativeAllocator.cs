@@ -37,7 +37,10 @@ public static unsafe class NativeAllocator
         NativeAllocatorBackend backend = NativeAllocatorBackend.PlatformInvoke,
         MemoryProtectionMode protection = MemoryProtectionMode.None)
     {
-        if (size == 0) return null;
+        if (size == 0)
+        {
+            return null;
+        }
 
         var total = size + HeaderSize;
         void* rawPtr = backend switch
@@ -57,7 +60,9 @@ public static unsafe class NativeAllocator
         _active[(nint)userPtr] = total;
 
         if (protection != MemoryProtectionMode.None)
+        {
             ApplyProtection(userPtr, size, protection);
+        }
 
         return userPtr;
     }
@@ -65,15 +70,23 @@ public static unsafe class NativeAllocator
     public static void Free(void* userPtr,
                             NativeAllocatorBackend backend = NativeAllocatorBackend.PlatformInvoke)
     {
-        if (userPtr is null) return;
+        if (userPtr is null)
+        {
+            return;
+        }
 
         var key = (nint)userPtr;
         if (!_active.Remove(key, out var total))
+        {
             throw new InvalidOperationException("Double free or foreign pointer detected.");
+        }
 
         var hdr = (AllocationHeader*)((byte*)userPtr - HeaderSize);
         if (hdr->Magic != MagicValue)
+        {
             throw new InvalidOperationException("Foreign pointer detected.");
+        }
+
         hdr->Magic = FreedValue;
 
         var rawPtr = (void*)hdr;
@@ -87,7 +100,9 @@ public static unsafe class NativeAllocator
         if (OperatingSystem.IsWindows())
         {
             if (!Native.VirtualFree((nint)rawPtr, 0, Native.MEM_RELEASE))
+            {
                 ThrowLastError("VirtualFree failed");
+            }
         }
         else if (Native.munmap((IntPtr)rawPtr, total) != 0)
         {
@@ -97,7 +112,10 @@ public static unsafe class NativeAllocator
 
     public static void ApplyProtection(void* ptr, nuint size, MemoryProtectionMode mode)
     {
-        if (ptr is null || size == 0) return;
+        if (ptr is null || size == 0)
+        {
+            return;
+        }
 
         if (OperatingSystem.IsWindows())
         {
@@ -108,7 +126,9 @@ public static unsafe class NativeAllocator
                 _ => Native.PAGE_READWRITE,
             };
             if (!Native.VirtualProtect((nint)ptr, size, prot, out _))
+            {
                 ThrowLastError("VirtualProtect failed");
+            }
         }
         else
         {
@@ -119,7 +139,9 @@ public static unsafe class NativeAllocator
                 _ => Native.PROT_READ | Native.PROT_WRITE,
             };
             if (Native.mprotect((IntPtr)ptr, size, prot) != 0)
+            {
                 ThrowLastError("mprotect failed");
+            }
         }
     }
 
