@@ -1,8 +1,8 @@
 namespace JsonPath.Parser.Lexer;
 
-public ref struct ScanContext
+public ref struct ScanContext(ReadOnlySpan<char> input)
 {
-    public ReadOnlySpan<char> Input;
+    public readonly ReadOnlySpan<char> Input = input;
     public int Position;
     public int Line;
     public int Column;

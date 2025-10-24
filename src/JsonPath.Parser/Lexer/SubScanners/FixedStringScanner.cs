@@ -19,5 +19,4 @@ public class FixedStringScanner(string literal, TokenKind kind) : ISubScanner
         token = default;
         return false;
     }
-
 }
