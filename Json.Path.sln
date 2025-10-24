@@ -5,8 +5,6 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{86468A2B-A524-43AD-9FCC-B6339E12720E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Json.Path", "src\Json.Path\Json.Path.csproj", "{36DE1B18-F31D-452B-9FB6-A685B47F8F33}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{EB8DC3CE-066A-4484-A592-C0B567C16CB3}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Json.Path.Tests", "tests\Json.Path.Tests\Json.Path.Tests.csproj", "{36AF7B66-831E-43FA-AF6F-6A8D183B3434}"
@@ -22,10 +20,6 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{36DE1B18-F31D-452B-9FB6-A685B47F8F33}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{36DE1B18-F31D-452B-9FB6-A685B47F8F33}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{36DE1B18-F31D-452B-9FB6-A685B47F8F33}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{36DE1B18-F31D-452B-9FB6-A685B47F8F33}.Release|Any CPU.Build.0 = Release|Any CPU
 		{36AF7B66-831E-43FA-AF6F-6A8D183B3434}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{36AF7B66-831E-43FA-AF6F-6A8D183B3434}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{36AF7B66-831E-43FA-AF6F-6A8D183B3434}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -36,7 +30,6 @@ Global
 		{BDF44353-8A37-4C71-B976-5D2EB36F3D39}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
-		{36DE1B18-F31D-452B-9FB6-A685B47F8F33} = {86468A2B-A524-43AD-9FCC-B6339E12720E}
 		{36AF7B66-831E-43FA-AF6F-6A8D183B3434} = {EB8DC3CE-066A-4484-A592-C0B567C16CB3}
 		{BDF44353-8A37-4C71-B976-5D2EB36F3D39} = {86468A2B-A524-43AD-9FCC-B6339E12720E}
 	EndGlobalSection
