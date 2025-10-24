@@ -50,6 +50,11 @@ public unsafe class ArenaAllocator : IDisposable
     private ArenaSegment* _current;
     private bool _disposed;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ArenaAllocator"/> class.
+    /// </summary>
+    /// <param name="initialSize">Size of the first segment to be allocated</param>
+    /// <remarks>Each new segment would have it's size doubled (up to a cap)</remarks>
     public ArenaAllocator(nuint initialSize = DefaultSegmentSize)
     {
         _first = AllocateNew(initialSize);
