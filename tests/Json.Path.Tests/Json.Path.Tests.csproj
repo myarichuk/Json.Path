@@ -22,7 +22,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../../src/Json.Path/Json.Path.csproj" />
     <ProjectReference Include="..\..\src\JsonPath.Parser\JsonPath.Parser.csproj" />
   </ItemGroup>
 </Project>
