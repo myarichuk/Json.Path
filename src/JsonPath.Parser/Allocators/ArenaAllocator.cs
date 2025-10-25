@@ -1,5 +1,6 @@
 using System;
 using System.Runtime.CompilerServices;
+using System.Threading;
 
 namespace JsonPath.Parser.Allocators;
 
@@ -34,21 +35,48 @@ public unsafe class ArenaAllocator : IDisposable
     /// Grows automatically when current segment runs out of space.
     /// </summary>
     /// <returns>Pointer to a new segment</returns>
-    [MethodImpl(MethodImplOptions.Synchronized)]
     public void* Alloc(nuint size, nuint align = 0)
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
+        align = align == 0 ? DefaultAlignment : align;
 
-        while (true)
+        lock (_disposeSync)
         {
-            if (_current->TryAlloc(size, align == 0 ? DefaultAlignment : align, out var ptr))
+            ObjectDisposedException.ThrowIf(_disposed, this);
+
+            if (_current is null)
             {
-                return ptr;
+                var initial = AllocateNew(size);
+
+                if (_first is null)
+                {
+                    _first = initial;
+                }
+
+                _current = initial;
             }
 
-            var newSeg = AllocateNew(size);
-            _current->Next = newSeg;
-            _current = newSeg;
+            while (true)
+            {
+                var current = _current;
+
+                if (current is not null && current->TryAlloc(size, align, out var ptr))
+                {
+                    return ptr;
+                }
+
+                var newSeg = AllocateNew(size);
+
+                if (_first is null)
+                {
+                    _first = newSeg;
+                }
+                else if (current is not null)
+                {
+                    current->Next = newSeg;
+                }
+
+                _current = newSeg;
+            }
         }
     }
 
@@ -109,8 +137,12 @@ public unsafe class ArenaAllocator : IDisposable
             return;
         }
 
-        _disposed = true;
-        ReleaseUnmanagedResources();
+        lock (_disposeSync)
+        {
+            _disposed = true;
+            ReleaseUnmanagedResources();
+        }
+
         Volatile.Write(ref _disposeState, 2);
         GC.SuppressFinalize(this);
     }
@@ -122,13 +154,16 @@ public unsafe class ArenaAllocator : IDisposable
             return;
         }
 
-        try
+        lock (_disposeSync)
         {
-            ReleaseUnmanagedResources();
-        }
-        finally
-        {
-            Volatile.Write(ref _disposeState, 2);
+            try
+            {
+                ReleaseUnmanagedResources();
+            }
+            finally
+            {
+                Volatile.Write(ref _disposeState, 2);
+            }
         }
     }
 }
