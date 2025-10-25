@@ -7,9 +7,13 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{86468A2B-A52
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{EB8DC3CE-066A-4484-A592-C0B567C16CB3}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Benchmark", "Benchmark", "{58952B77-22CD-44AF-99A9-50516022851C}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Json.Path.Tests", "tests\Json.Path.Tests\Json.Path.Tests.csproj", "{36AF7B66-831E-43FA-AF6F-6A8D183B3434}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JsonPath.Parser", "src\JsonPath.Parser\JsonPath.Parser.csproj", "{BDF44353-8A37-4C71-B976-5D2EB36F3D39}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ArenaAllocatorStress", "Benchmark\ArenaAllocatorStress\ArenaAllocatorStress.csproj", "{50132BD5-A69D-4555-869B-0E1BF36ACBF5}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -26,11 +30,16 @@ Global
 		{36AF7B66-831E-43FA-AF6F-6A8D183B3434}.Release|Any CPU.Build.0 = Release|Any CPU
 		{BDF44353-8A37-4C71-B976-5D2EB36F3D39}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{BDF44353-8A37-4C71-B976-5D2EB36F3D39}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{BDF44353-8A37-4C71-B976-5D2EB36F3D39}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{BDF44353-8A37-4C71-B976-5D2EB36F3D39}.Release|Any CPU.Build.0 = Release|Any CPU
-	EndGlobalSection
-	GlobalSection(NestedProjects) = preSolution
-		{36AF7B66-831E-43FA-AF6F-6A8D183B3434} = {EB8DC3CE-066A-4484-A592-C0B567C16CB3}
-		{BDF44353-8A37-4C71-B976-5D2EB36F3D39} = {86468A2B-A524-43AD-9FCC-B6339E12720E}
-	EndGlobalSection
+                {BDF44353-8A37-4C71-B976-5D2EB36F3D39}.Release|Any CPU.ActiveCfg = Release|Any CPU
+                {BDF44353-8A37-4C71-B976-5D2EB36F3D39}.Release|Any CPU.Build.0 = Release|Any CPU
+                {50132BD5-A69D-4555-869B-0E1BF36ACBF5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+                {50132BD5-A69D-4555-869B-0E1BF36ACBF5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+                {50132BD5-A69D-4555-869B-0E1BF36ACBF5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+                {50132BD5-A69D-4555-869B-0E1BF36ACBF5}.Release|Any CPU.Build.0 = Release|Any CPU
+        EndGlobalSection
+        GlobalSection(NestedProjects) = preSolution
+                {36AF7B66-831E-43FA-AF6F-6A8D183B3434} = {EB8DC3CE-066A-4484-A592-C0B567C16CB3}
+                {BDF44353-8A37-4C71-B976-5D2EB36F3D39} = {86468A2B-A524-43AD-9FCC-B6339E12720E}
+                {50132BD5-A69D-4555-869B-0E1BF36ACBF5} = {58952B77-22CD-44AF-99A9-50516022851C}
+        EndGlobalSection
 EndGlobal
