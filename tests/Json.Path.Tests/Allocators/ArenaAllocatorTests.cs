@@ -3,6 +3,12 @@ using Xunit;
 
 namespace Json.Path.Tests.Allocators;
 
+[CollectionDefinition("ArenaAllocatorTests", DisableParallelization = true)]
+public class NonConcurrentCollection
+{
+}
+
+[Collection("ArenaAllocatorTests")]
 public unsafe class ArenaAllocatorTests : IDisposable
 {
     private readonly ArenaAllocator _arena = new();
@@ -81,5 +87,31 @@ public unsafe class ArenaAllocatorTests : IDisposable
                 break;
             }
         }
+    }
+    
+    [Fact]
+    public void Dispose_IsIdempotent()
+    {
+        var arena = new ArenaAllocator(4096);
+        var p = arena.Alloc(256);
+        arena.Dispose();
+        arena.Dispose(); // should be a no-op, not crash
+    }
+
+    [Fact]
+    public void Finalizer_DoesNotDoubleFree()
+    {
+        WeakReference? wr = null;
+        new Action(() =>
+        {
+            var arena = new ArenaAllocator(4096);
+            arena.Alloc(256);
+            arena.Dispose();              // explicit
+            wr = new WeakReference(arena);
+        })();
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();                     // should not crash; finalizer must be suppressed or no-op
+        Assert.False(wr?.IsAlive);
     }
 }

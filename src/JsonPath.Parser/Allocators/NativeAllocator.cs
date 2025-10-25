@@ -1,5 +1,5 @@
 using System;
-using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
@@ -22,8 +22,11 @@ public static unsafe class NativeAllocator
 {
     private const ulong MagicValue = 0xDEADC0DECAFEBEEFUL;
     private const ulong FreedValue = 0xFEEDF00DDEADBEAFL;
+
     private static readonly nuint HeaderSize = (nuint)sizeof(AllocationHeader);
-    private static readonly Dictionary<nint, nuint> _active = new();
+
+    // ConcurrentDictionary ensures async/thread safety
+    private static readonly ConcurrentDictionary<nint, nuint> _active = new();
 
     [StructLayout(LayoutKind.Sequential)]
     private struct AllocationHeader
@@ -52,6 +55,11 @@ public static unsafe class NativeAllocator
                                     Native.MAP_PRIVATE | Native.MAP_ANONYMOUS, -1, 0),
         };
 
+        if (rawPtr is null)
+        {
+            throw new OutOfMemoryException("Native allocation failed");
+        }
+
         var hdr = (AllocationHeader*)rawPtr;
         hdr->Magic = MagicValue;
         hdr->Size = size;
@@ -59,7 +67,8 @@ public static unsafe class NativeAllocator
         var userPtr = (byte*)rawPtr + HeaderSize;
         _active[(nint)userPtr] = total;
 
-        if (protection != MemoryProtectionMode.None)
+        if (protection != MemoryProtectionMode.None &&
+            backend is NativeAllocatorBackend.PlatformInvoke)
         {
             ApplyProtection(userPtr, size, protection);
         }
@@ -76,12 +85,14 @@ public static unsafe class NativeAllocator
         }
 
         var key = (nint)userPtr;
-        if (!_active.Remove(key, out var total))
+
+        if (!_active.TryRemove(key, out var total))
         {
             throw new InvalidOperationException("Double free or foreign pointer detected.");
         }
 
         var hdr = (AllocationHeader*)((byte*)userPtr - HeaderSize);
+
         if (hdr->Magic != MagicValue)
         {
             throw new InvalidOperationException("Foreign pointer detected.");
@@ -91,22 +102,28 @@ public static unsafe class NativeAllocator
 
         var rawPtr = (void*)hdr;
 
-        if (backend == NativeAllocatorBackend.DotNetUnmanaged)
+        switch (backend)
         {
-            NativeMemory.Free(rawPtr);
-            return;
-        }
+            case NativeAllocatorBackend.DotNetUnmanaged:
+                NativeMemory.Free(rawPtr);
+                return;
 
-        if (OperatingSystem.IsWindows())
-        {
-            if (!Native.VirtualFree((nint)rawPtr, 0, Native.MEM_RELEASE))
-            {
-                ThrowLastError("VirtualFree failed");
-            }
-        }
-        else if (Native.munmap((IntPtr)rawPtr, total) != 0)
-        {
-            ThrowLastError("munmap failed");
+            case NativeAllocatorBackend.PlatformInvoke:
+                if (OperatingSystem.IsWindows())
+                {
+                    if (!Native.VirtualFree((nint)rawPtr, 0, Native.MEM_RELEASE))
+                    {
+                        ThrowLastError("VirtualFree failed");
+                    }
+                }
+                else if (Native.munmap((IntPtr)rawPtr, total) != 0)
+                {
+                    ThrowLastError("munmap failed");
+                }
+                break;
+
+            default:
+                throw new ArgumentOutOfRangeException(nameof(backend));
         }
     }
 
@@ -148,11 +165,13 @@ public static unsafe class NativeAllocator
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static void ThrowLastError(string msg)
         => throw new InvalidOperationException($"{msg} (errno {Marshal.GetLastWin32Error()})");
+
+#if DEBUG
+    public static int ActiveCount => _active.Count;
+#endif
 }
 
-//------------------------------------------------------------------------------
-//  platform interop (LibraryImport = compile-time P/Invoke stubs)
-//------------------------------------------------------------------------------
+
 internal static partial class Native
 {
     public const string Kernel32 = "kernel32.dll";

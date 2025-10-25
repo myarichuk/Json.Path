@@ -12,9 +12,11 @@ public unsafe class ArenaAllocator : IDisposable
     private const nuint MaxSegmentSize = 256 * 1024 * 1024;    // 256 MB cap
     private static readonly nuint DefaultAlignment = (nuint)IntPtr.Size;
 
-    private readonly ArenaSegment* _first;
+    private readonly object _disposeSync = new object();
+    private ArenaSegment* _first;
     private ArenaSegment* _current;
     private bool _disposed;
+    private int _disposeState; // 0=alive, 1=disposing, 2=disposed
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ArenaAllocator"/> class.
@@ -32,8 +34,11 @@ public unsafe class ArenaAllocator : IDisposable
     /// Grows automatically when current segment runs out of space.
     /// </summary>
     /// <returns>Pointer to a new segment</returns>
+    [MethodImpl(MethodImplOptions.Synchronized)]
     public void* Alloc(nuint size, nuint align = 0)
     {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
         while (true)
         {
             if (_current->TryAlloc(size, align == 0 ? DefaultAlignment : align, out var ptr))
@@ -49,15 +54,13 @@ public unsafe class ArenaAllocator : IDisposable
 
     private ArenaSegment* AllocateNew(nuint requestSize)
     {
-        if (_disposed)
-        {
-            throw new ObjectDisposedException(nameof(ArenaAllocator));
-        }
+        ObjectDisposedException.ThrowIf(_disposed, this);
 
         var prevSize = _current is null ? 0 : _current->Size;
         var newSize = NextSegmentSize(prevSize, requestSize);
 
         var seg = (ArenaSegment*)NativeAllocator.Alloc((nuint)sizeof(ArenaSegment));
+        *seg = default; // ensure _offset = 0
         seg->Base = (byte*)NativeAllocator.Alloc(newSize);
         seg->Size = newSize;
         seg->Next = null;
@@ -77,35 +80,55 @@ public unsafe class ArenaAllocator : IDisposable
     private static nuint AlignUp(nuint value, nuint align) =>
         (value + (align - 1)) & ~(align - 1);
 
-    private void Free(ArenaSegment* seg)
-    {
-        NativeAllocator.Free(seg->Base);
-        NativeAllocator.Free(seg);
-    }
 
     private void ReleaseUnmanagedResources()
     {
-        if (_disposed)
-        {
-            return;
-        }
-
-        _disposed = true;
-
         var seg = _first;
+        _first = null;
+        _current = null;
+
         while (seg != null)
         {
             var next = seg->Next;
-            Free(seg);
+
+            if (seg->Base != null)
+            {
+                NativeAllocator.Free(seg->Base);
+                seg->Base = null;
+            }
+
+            NativeAllocator.Free(seg);
             seg = next;
         }
     }
 
     public void Dispose()
     {
+        if (Interlocked.Exchange(ref _disposeState, 1) != 0)
+        {
+            return;
+        }
+
+        _disposed = true;
         ReleaseUnmanagedResources();
+        Volatile.Write(ref _disposeState, 2);
         GC.SuppressFinalize(this);
     }
 
-    ~ArenaAllocator() => ReleaseUnmanagedResources();
+    ~ArenaAllocator()
+    {
+        if (Interlocked.Exchange(ref _disposeState, 1) != 0)
+        {
+            return;
+        }
+
+        try
+        {
+            ReleaseUnmanagedResources();
+        }
+        finally
+        {
+            Volatile.Write(ref _disposeState, 2);
+        }
+    }
 }

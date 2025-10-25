@@ -3,26 +3,20 @@ using JsonPath.Parser.Diagnostics;
 
 namespace JsonPath.Parser.Lexer;
 
-public ref struct Scanner
+public readonly struct Scanner(
+    ArenaAllocator allocator,
+    SubScannerRepository subScanners)
 {
-    private readonly ReadOnlySpan<char> _input;
-    private readonly ArenaAllocator _allocator;
-    private readonly SubScannerRepository _subScanners;
-
-    public Scanner(
+    public bool TryScan(
         ReadOnlySpan<char> input,
-        ArenaAllocator allocator,
-        SubScannerRepository subScanners)
+        out ArenaList<Token> tokens,
+        out ArenaList<JsonPathError> errors)
     {
-        _input = input;
-        _allocator = allocator;
-        _subScanners = subScanners;
-    }
+        var ctx = new ScanContext(input);
 
-    public bool TryScan(out ArenaList<Token> tokens, out ArenaList<JsonPathError> errors)
-    {
-        tokens = new ArenaList<Token>(_allocator);
-        errors = new ArenaList<JsonPathError>(_allocator);
+        tokens = new ArenaList<Token>(allocator);
+        errors = new ArenaList<JsonPathError>(allocator);
+
         throw new NotImplementedException();
     }
 }
