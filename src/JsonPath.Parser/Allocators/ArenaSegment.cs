@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
@@ -9,8 +10,14 @@ namespace JsonPath.Parser.Allocators;
 [StructLayout(LayoutKind.Sequential)]
 public unsafe struct ArenaSegment
 {
-    private nuint _offset;
+#if DEBUG
+    public ulong HeadCanary;
+    public ulong TailCanary;
 
+    internal const ulong Canary = 0xDEADBEEFCAFEBABEul;
+#endif
+
+    public nuint Offset;
     public byte* Base;
     public nuint Size;
     public ArenaSegment* Next;
@@ -23,15 +30,20 @@ public unsafe struct ArenaSegment
             align = (nuint)IntPtr.Size;
         }
 
-        var aligned = (_offset + (align - 1)) & ~(align - 1);
-        if (aligned + size > Size)
+        Debug.Assert((align & (align - 1)) == 0, "align must be a power of two");
+
+        // round up
+        var aligned = (Offset + (align - 1)) & ~(align - 1);
+
+        // overflow-safe bound check: aligned <= Size - size
+        if (size > Size || aligned > Size - size)
         {
             ptr = null;
             return false;
         }
 
         ptr = Base + aligned;
-        _offset = aligned + size;
+        Offset = aligned + size;
         return true;
     }
 }

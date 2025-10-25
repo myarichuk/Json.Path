@@ -31,7 +31,7 @@ public readonly unsafe struct ArenaString(char* ptr, int len)
         }
 
         var bytes = (nuint)(src.Length * sizeof(char));
-        var dest = (char*)arena.Alloc(bytes, align: (nuint)sizeof(char));
+        var dest = (char*)arena.Alloc(bytes, align: (nuint)IntPtr.Size);
         src.CopyTo(new Span<char>(dest, src.Length));
         return new ArenaString(dest, src.Length);
     }

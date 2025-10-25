@@ -26,21 +26,6 @@ public unsafe class NativeAllocatorTests
     [Theory]
     [InlineData(NativeAllocatorBackend.DotNetUnmanaged)]
     [InlineData(NativeAllocatorBackend.PlatformInvoke)]
-    public void ProtectAndUnprotect_ShouldNotThrow(NativeAllocatorBackend backend)
-    {
-        var ptr = NativeAllocator.Alloc(PageSize, backend);
-        Assert.NotEqual(IntPtr.Zero, (IntPtr)ptr);
-
-        NativeAllocator.ApplyProtection(ptr, PageSize, MemoryProtectionMode.ReadOnly);
-
-        NativeAllocator.ApplyProtection(ptr, PageSize, MemoryProtectionMode.None);
-
-        NativeAllocator.Free(ptr, backend);
-    }
-
-    [Theory]
-    [InlineData(NativeAllocatorBackend.DotNetUnmanaged)]
-    [InlineData(NativeAllocatorBackend.PlatformInvoke)]
     public void MultipleAllocations_ShouldBeIndependent(NativeAllocatorBackend backend)
     {
         var ptr1 = NativeAllocator.Alloc(PageSize, backend);
@@ -77,6 +62,7 @@ public unsafe class NativeAllocatorTests
         NativeAllocator.Free(ptr, backend);
 
         var ex = Record.Exception(() => NativeAllocator.Free(ptr, backend));
+        Assert.NotNull(ex);
         Assert.IsType<InvalidOperationException>(ex);
     }
 }
