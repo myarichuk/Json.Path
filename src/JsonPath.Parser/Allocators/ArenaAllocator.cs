@@ -1,5 +1,6 @@
 using System;
 using System.Runtime.CompilerServices;
+using System.Threading;
 
 namespace JsonPath.Parser.Allocators;
 
@@ -12,7 +13,7 @@ public unsafe class ArenaAllocator : IDisposable
     private const nuint MaxSegmentSize = 256 * 1024 * 1024;    // 256 MB cap
     private static readonly nuint DefaultAlignment = (nuint)IntPtr.Size;
 
-    private readonly object _disposeSync = new object();
+    private readonly object _globalLock = new object();
     private ArenaSegment* _first;
     private ArenaSegment* _current;
     private bool _disposed;
@@ -34,21 +35,48 @@ public unsafe class ArenaAllocator : IDisposable
     /// Grows automatically when current segment runs out of space.
     /// </summary>
     /// <returns>Pointer to a new segment</returns>
-    [MethodImpl(MethodImplOptions.Synchronized)]
     public void* Alloc(nuint size, nuint align = 0)
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
+        align = align == 0 ? DefaultAlignment : align;
 
-        while (true)
+        lock (_globalLock)
         {
-            if (_current->TryAlloc(size, align == 0 ? DefaultAlignment : align, out var ptr))
+            ObjectDisposedException.ThrowIf(_disposed, this);
+
+            if (_current is null)
             {
-                return ptr;
+                var initial = AllocateNew(size);
+
+                if (_first is null)
+                {
+                    _first = initial;
+                }
+
+                _current = initial;
             }
 
-            var newSeg = AllocateNew(size);
-            _current->Next = newSeg;
-            _current = newSeg;
+            while (true)
+            {
+                var current = _current;
+
+                if (current is not null && current->TryAlloc(size, align, out var ptr))
+                {
+                    return ptr;
+                }
+
+                var newSeg = AllocateNew(size);
+
+                if (_first is null)
+                {
+                    _first = newSeg;
+                }
+                else if (current is not null)
+                {
+                    current->Next = newSeg;
+                }
+
+                _current = newSeg;
+            }
         }
     }
 
@@ -83,22 +111,25 @@ public unsafe class ArenaAllocator : IDisposable
 
     private void ReleaseUnmanagedResources()
     {
-        var seg = _first;
-        _first = null;
-        _current = null;
-
-        while (seg != null)
+        lock (_globalLock)
         {
-            var next = seg->Next;
+            var cur = _first;
+            _first = null;
+            _current = null;
 
-            if (seg->Base != null)
+            while (cur != null)
             {
-                NativeAllocator.Free(seg->Base);
-                seg->Base = null;
-            }
+                var next = cur->Next;
 
-            NativeAllocator.Free(seg);
-            seg = next;
+                if (cur->Base != null)
+                {
+                    NativeAllocator.Free(cur->Base);
+                    cur->Base = null;
+                }
+
+                NativeAllocator.Free(cur);
+                cur = next;
+            }
         }
     }
 
@@ -110,7 +141,11 @@ public unsafe class ArenaAllocator : IDisposable
         }
 
         _disposed = true;
-        ReleaseUnmanagedResources();
+        lock (_globalLock)
+        {
+            ReleaseUnmanagedResources();
+        }
+
         Volatile.Write(ref _disposeState, 2);
         GC.SuppressFinalize(this);
     }

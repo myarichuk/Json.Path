@@ -93,7 +93,14 @@ public static unsafe class NativeAllocator
 
         var hdr = (AllocationHeader*)((byte*)userPtr - HeaderSize);
 
-        if (hdr->Magic != MagicValue)
+        try
+        {
+            if (hdr->Magic != MagicValue)
+            {
+                throw new InvalidOperationException("Foreign pointer detected.");
+            }
+        }
+        catch (AccessViolationException)
         {
             throw new InvalidOperationException("Foreign pointer detected.");
         }
