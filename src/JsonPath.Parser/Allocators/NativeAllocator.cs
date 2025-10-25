@@ -24,6 +24,7 @@ public static unsafe class NativeAllocator
     private const ulong FreedValue = 0xFEEDF00DDEADBEAFL;
 
     private static readonly nuint HeaderSize = (nuint)sizeof(AllocationHeader);
+    private static readonly nuint PageSize = (nuint)Environment.SystemPageSize;
 
     // ConcurrentDictionary ensures async/thread safety
     private static readonly ConcurrentDictionary<nint, nuint> _active = new();
@@ -32,7 +33,11 @@ public static unsafe class NativeAllocator
     private struct AllocationHeader
     {
         public ulong Magic;
-        public ulong Size;
+        public nuint Size;
+        public nuint ReservedSize;
+        public nuint GuardPrefix;
+        public nuint GuardSuffix;
+        public NativeAllocatorBackend Backend;
     }
 
     public static void* Alloc(
@@ -46,32 +51,64 @@ public static unsafe class NativeAllocator
         }
 
         var total = size + HeaderSize;
+        var alignedTotal = total;
+        nuint guardPrefix = 0;
+        nuint guardSuffix = 0;
+
+        if (backend is NativeAllocatorBackend.PlatformInvoke)
+        {
+            alignedTotal = AlignUp(total, PageSize);
+#if DEBUG
+            guardPrefix = PageSize;
+            guardSuffix = PageSize;
+            alignedTotal += guardPrefix + guardSuffix;
+#endif
+        }
+
         void* rawPtr = backend switch
         {
             NativeAllocatorBackend.DotNetUnmanaged => NativeMemory.Alloc(total),
             _ when OperatingSystem.IsWindows()
-                => (void*)Native.VirtualAlloc(0, total, Native.MEM_RESERVE | Native.MEM_COMMIT, Native.PAGE_READWRITE),
-            _ => (void*)Native.mmap(IntPtr.Zero, total, Native.PROT_READ | Native.PROT_WRITE,
+                => (void*)Native.VirtualAlloc(0, alignedTotal, Native.MEM_RESERVE | Native.MEM_COMMIT, Native.PAGE_READWRITE),
+            _ => (void*)Native.mmap(IntPtr.Zero, alignedTotal, Native.PROT_READ | Native.PROT_WRITE,
                                     Native.MAP_PRIVATE | Native.MAP_ANONYMOUS, -1, 0),
         };
+
+        if (backend is NativeAllocatorBackend.PlatformInvoke && IsMmapFailure(rawPtr))
+        {
+            rawPtr = null;
+        }
 
         if (rawPtr is null)
         {
             throw new OutOfMemoryException("Native allocation failed");
         }
 
-        var hdr = (AllocationHeader*)rawPtr;
+        var headerPtr = (AllocationHeader*)((byte*)rawPtr + guardPrefix);
+        var hdr = headerPtr;
         hdr->Magic = MagicValue;
         hdr->Size = size;
+        hdr->ReservedSize = alignedTotal;
+        hdr->GuardPrefix = guardPrefix;
+        hdr->GuardSuffix = guardSuffix;
+        hdr->Backend = backend;
 
-        var userPtr = (byte*)rawPtr + HeaderSize;
-        _active[(nint)userPtr] = total;
+        var userPtr = (byte*)headerPtr + HeaderSize;
 
         if (protection != MemoryProtectionMode.None &&
             backend is NativeAllocatorBackend.PlatformInvoke)
         {
             ApplyProtection(userPtr, size, protection);
         }
+
+#if DEBUG
+        if (backend is NativeAllocatorBackend.PlatformInvoke)
+        {
+            ApplyGuard(rawPtr, guardPrefix, guardSuffix, alignedTotal);
+        }
+#endif
+
+        _active[(nint)userPtr] = alignedTotal;
 
         return userPtr;
     }
@@ -86,7 +123,7 @@ public static unsafe class NativeAllocator
 
         var key = (nint)userPtr;
 
-        if (!_active.TryRemove(key, out var total))
+        if (!_active.TryRemove(key, out _))
         {
             throw new InvalidOperationException("Double free or foreign pointer detected.");
         }
@@ -105,11 +142,19 @@ public static unsafe class NativeAllocator
             throw new InvalidOperationException("Foreign pointer detected.");
         }
 
+        var guardPrefix = hdr->GuardPrefix;
+        var reservedSize = hdr->ReservedSize;
+        var allocationBackend = hdr->Backend;
+        var rawPtr = (byte*)hdr - guardPrefix;
+
         hdr->Magic = FreedValue;
 
-        var rawPtr = (void*)hdr;
+        if (backend != allocationBackend)
+        {
+            throw new InvalidOperationException("Allocator backend mismatch.");
+        }
 
-        switch (backend)
+        switch (allocationBackend)
         {
             case NativeAllocatorBackend.DotNetUnmanaged:
                 NativeMemory.Free(rawPtr);
@@ -123,7 +168,7 @@ public static unsafe class NativeAllocator
                         ThrowLastError("VirtualFree failed");
                     }
                 }
-                else if (Native.munmap((IntPtr)rawPtr, total) != 0)
+                else if (Native.munmap((IntPtr)rawPtr, reservedSize) != 0)
                 {
                     ThrowLastError("munmap failed");
                 }
@@ -134,11 +179,130 @@ public static unsafe class NativeAllocator
         }
     }
 
+    private static bool IsMmapFailure(void* ptr)
+        => !OperatingSystem.IsWindows() && (nint)ptr == -1;
+
+    private static void AlignToPage(void* ptr, nuint length, out void* alignedPtr, out nuint alignedLength)
+    {
+        var address = (nuint)ptr;
+        var start = AlignDown(address, PageSize);
+        var end = AlignUp(address + length, PageSize);
+        alignedPtr = (void*)start;
+        alignedLength = end - start;
+    }
+
+    private static nuint AlignUp(nuint value, nuint alignment)
+    {
+        if (alignment == 0)
+        {
+            return value;
+        }
+
+        var remainder = value % alignment;
+        return remainder == 0 ? value : value + (alignment - remainder);
+    }
+
+    private static nuint AlignDown(nuint value, nuint alignment)
+    {
+        if (alignment == 0)
+        {
+            return value;
+        }
+
+        var remainder = value % alignment;
+        return value - remainder;
+    }
+
+#if DEBUG
+    private static void ApplyGuard(void* basePtr, nuint guardPrefix, nuint guardSuffix, nuint total)
+    {
+        if (guardPrefix == 0 && guardSuffix == 0)
+        {
+            return;
+        }
+
+        if (guardPrefix != 0)
+        {
+            ProtectGuard(basePtr, guardPrefix);
+        }
+
+        if (guardSuffix != 0)
+        {
+            var suffixPtr = (byte*)basePtr + total - guardSuffix;
+            ProtectGuard(suffixPtr, guardSuffix);
+        }
+    }
+
+    private static void ProtectGuard(void* ptr, nuint length)
+    {
+        if (length == 0)
+        {
+            return;
+        }
+
+        if (OperatingSystem.IsWindows())
+        {
+            if (!Native.VirtualProtect((nint)ptr, length, Native.PAGE_NOACCESS, out _))
+            {
+                ThrowLastError("VirtualProtect guard failed");
+            }
+        }
+        else if (Native.mprotect((IntPtr)ptr, length, Native.PROT_NONE) != 0)
+        {
+            ThrowLastError("mprotect guard failed");
+        }
+    }
+#endif
+
     public static void ApplyProtection(void* ptr, nuint size, MemoryProtectionMode mode)
     {
         if (ptr is null || size == 0)
         {
             return;
+        }
+
+        AlignToPage(ptr, size, out var alignedPtr, out var alignedLength);
+
+        var header = (AllocationHeader*)((byte*)ptr - HeaderSize);
+
+        if (header->GuardPrefix != 0 || header->GuardSuffix != 0)
+        {
+            var start = (nuint)alignedPtr;
+            var end = start + alignedLength;
+            var basePtr = (nuint)((byte*)header - header->GuardPrefix);
+            var userStart = basePtr + header->GuardPrefix;
+            var userEnd = basePtr + header->ReservedSize - header->GuardSuffix;
+
+            if (start < userStart)
+            {
+                var delta = userStart - start;
+                if (delta >= alignedLength)
+                {
+                    return;
+                }
+
+                start = userStart;
+                alignedPtr = (void*)start;
+                alignedLength -= delta;
+                end = start + alignedLength;
+            }
+
+            if (end > userEnd)
+            {
+                var delta = end - userEnd;
+                if (delta >= alignedLength)
+                {
+                    return;
+                }
+
+                alignedLength -= delta;
+                end = userEnd;
+            }
+
+            if (alignedLength == 0)
+            {
+                return;
+            }
         }
 
         if (OperatingSystem.IsWindows())
@@ -149,7 +313,7 @@ public static unsafe class NativeAllocator
                 MemoryProtectionMode.NoAccess => Native.PAGE_NOACCESS,
                 _ => Native.PAGE_READWRITE,
             };
-            if (!Native.VirtualProtect((nint)ptr, size, prot, out _))
+            if (!Native.VirtualProtect((nint)alignedPtr, alignedLength, prot, out _))
             {
                 ThrowLastError("VirtualProtect failed");
             }
@@ -162,7 +326,7 @@ public static unsafe class NativeAllocator
                 MemoryProtectionMode.NoAccess => Native.PROT_NONE,
                 _ => Native.PROT_READ | Native.PROT_WRITE,
             };
-            if (Native.mprotect((IntPtr)ptr, size, prot) != 0)
+            if (Native.mprotect((IntPtr)alignedPtr, alignedLength, prot) != 0)
             {
                 ThrowLastError("mprotect failed");
             }
