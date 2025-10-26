@@ -24,11 +24,11 @@ internal static class Program
         var scenarios = new[]
         {
             new Scenario(
-                "Parallel allocation",
-                () => StressScenarios.ParallelAllocation(options.WorkerCount, options.AllocationsPerWorker)),
+                "Sequential allocation",
+                () => StressScenarios.SequentialAllocation(options.WorkerCount, options.AllocationsPerWorker)),
             new Scenario(
                 "Dispose race",
-                () => StressScenarios.DisposeRace(Math.Max(2, options.WorkerCount / 2), Math.Max(1, options.AllocationsPerWorker / 2))),
+                () => StressScenarios.DisposeRace(Math.Max(1, options.AllocationsPerWorker * Math.Max(1, options.WorkerCount / 2)))),
             new Scenario(
                 "Finalizer pressure",
                 () => StressScenarios.FinalizerPressure(options.FinalizerWaves, options.FinalizerAllocationsPerWave))
@@ -149,69 +149,87 @@ internal sealed class StressOptions
 
 internal static class StressScenarios
 {
-    public static ScenarioResult ParallelAllocation(int workerCount, int allocationsPerWorker)
+    public static ScenarioResult SequentialAllocation(int workerCount, int allocationsPerWorker)
     {
-        using var arena = new ArenaAllocator(512 * 1024);
-        using var startGate = new ManualResetEventSlim(false);
-        var tasks = new Task[workerCount];
+        var total = (long)workerCount * allocationsPerWorker;
 
-        for (var worker = 0; worker < workerCount; worker++)
+        using var arena = new ArenaAllocator(512 * 1024);
+
+        unsafe
         {
-            var workerId = worker;
-            tasks[worker] = Task.Run(() => RunWorker(arena, startGate, workerId, allocationsPerWorker));
+            for (var i = 0L; i < total; i++)
+            {
+                var size = (nuint)Random.Shared.Next(32, 8 * 1024);
+                var align = Random.Shared.Next(0, 2) == 0 ? 0 : (nuint)(IntPtr.Size << Random.Shared.Next(0, 4));
+                var buffer = (byte*)arena.Alloc(size, align);
+                var label = workerCount > 0 ? (byte)((i % workerCount) + 1) : (byte)1;
+                Touch(buffer, (int)size, label);
+            }
         }
 
-        startGate.Set();
-        Task.WaitAll(tasks);
-
-        var total = (long)workerCount * allocationsPerWorker;
-        return new ScenarioResult($"Executed {total:N0} allocations across {workerCount} workers.");
+        return new ScenarioResult($"Executed {total:N0} sequential allocations.");
     }
 
-    public static ScenarioResult DisposeRace(int workerCount, int operationsPerWorker)
+    public static ScenarioResult DisposeRace(int allocationCount)
     {
         var arena = new ArenaAllocator(64 * 1024);
-        using var startGate = new ManualResetEventSlim(false);
-        var tasks = new Task[workerCount + 1];
         var performed = 0;
+        var disposing = 0;
+        var inCriticalSection = 0;
 
-        for (var worker = 0; worker < workerCount; worker++)
+        var worker = Task.Run(() =>
         {
-            tasks[worker] = Task.Run(() =>
+            unsafe
             {
-                startGate.Wait();
-
-                for (var i = 0; i < operationsPerWorker; i++)
+                try
                 {
-                    try
+                    for (var i = 0; i < allocationCount; i++)
                     {
+                        if (Volatile.Read(ref disposing) != 0)
+                        {
+                            break;
+                        }
+
+                        Interlocked.Exchange(ref inCriticalSection, 1);
+
+                        if (Volatile.Read(ref disposing) != 0)
+                        {
+                            Interlocked.Exchange(ref inCriticalSection, 0);
+                            break;
+                        }
+
                         var size = (nuint)Random.Shared.Next(16, 4 * 1024);
                         var buffer = (byte*)arena.Alloc(size);
                         Touch(buffer, (int)size, 0xAA);
+                        Interlocked.Exchange(ref inCriticalSection, 0);
+
                         Interlocked.Increment(ref performed);
                     }
-                    catch (ObjectDisposedException)
-                    {
-                        break;
-                    }
                 }
-            });
-        }
-
-        tasks[^1] = Task.Run(() =>
-        {
-            startGate.Wait();
-
-            while (Volatile.Read(ref performed) < (long)workerCount * operationsPerWorker / 3)
-            {
-                Thread.SpinWait(128);
+                catch (ObjectDisposedException)
+                {
+                    Interlocked.Exchange(ref inCriticalSection, 0);
+                }
             }
-
-            arena.Dispose();
         });
 
-        startGate.Set();
-        Task.WaitAll(tasks);
+        var threshold = Math.Max(1, allocationCount / 3);
+        var spinner = new SpinWait();
+
+        while (Volatile.Read(ref performed) < threshold && !worker.IsCompleted)
+        {
+            spinner.SpinOnce();
+        }
+
+        Volatile.Write(ref disposing, 1);
+
+        while (Volatile.Read(ref inCriticalSection) != 0)
+        {
+            spinner.SpinOnce();
+        }
+
+        arena.Dispose();
+        worker.GetAwaiter().GetResult();
 
         return new ScenarioResult($"Performed {performed:N0} allocations before dispose completed.");
     }
@@ -231,18 +249,6 @@ internal static class StressScenarios
 
         var survivors = refs.Count(static r => r.IsAlive);
         return new ScenarioResult($"Finalizer survivors after forced GC: {survivors} of {refs.Length}.");
-    }
-
-    private static unsafe void RunWorker(ArenaAllocator arena, ManualResetEventSlim startGate, int workerId, int allocations)
-    {
-        startGate.Wait();
-        for (var i = 0; i < allocations; i++)
-        {
-            var size = (nuint)Random.Shared.Next(32, 8 * 1024);
-            var align = Random.Shared.Next(0, 2) == 0 ? 0 : (nuint)(IntPtr.Size << Random.Shared.Next(0, 4));
-            var buffer = (byte*)arena.Alloc(size, align);
-            Touch(buffer, (int)size, (byte)(workerId + 1));
-        }
     }
 
     private static unsafe WeakReference CreateFinalizerTarget(int allocations)

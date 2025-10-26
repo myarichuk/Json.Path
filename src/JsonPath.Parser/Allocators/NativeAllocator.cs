@@ -1,7 +1,10 @@
 using System;
-using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+
+#if DEBUG
+using System.Collections.Concurrent;
+#endif
 
 namespace JsonPath.Parser.Allocators;
 
@@ -27,7 +30,31 @@ public static unsafe class NativeAllocator
     private static readonly nuint PageSize = (nuint)Environment.SystemPageSize;
 
     // ConcurrentDictionary ensures async/thread safety
-    private static readonly ConcurrentDictionary<nint, nuint> _active = new();
+#if DEBUG
+    private static readonly ConcurrentDictionary<nint, AllocationInfo> _active = new();
+
+    private readonly struct AllocationInfo
+    {
+        public AllocationInfo(nint rawPtr, nuint reservedSize, nuint guardPrefix, NativeAllocatorBackend backend)
+        {
+            RawPtr = rawPtr;
+            ReservedSize = reservedSize;
+            GuardPrefix = guardPrefix;
+            Backend = backend;
+        }
+
+        public nint RawPtr { get; }
+
+        public nuint ReservedSize { get; }
+
+        public nuint GuardPrefix { get; }
+
+        public NativeAllocatorBackend Backend { get; }
+
+        public AllocationHeader* Header
+            => (AllocationHeader*)((byte*)RawPtr + GuardPrefix);
+    }
+#endif
 
     [StructLayout(LayoutKind.Sequential)]
     private struct AllocationHeader
@@ -108,7 +135,10 @@ public static unsafe class NativeAllocator
         }
 #endif
 
-        _active[(nint)userPtr] = alignedTotal;
+#if DEBUG
+        var info = new AllocationInfo((nint)rawPtr, alignedTotal, guardPrefix, backend);
+        _active[(nint)userPtr] = info;
+#endif
 
         return userPtr;
     }
@@ -121,49 +151,54 @@ public static unsafe class NativeAllocator
             return;
         }
 
+        var header = (AllocationHeader*)((byte*)userPtr - HeaderSize);
+
+#if DEBUG
         var key = (nint)userPtr;
 
-        if (!_active.TryRemove(key, out _))
+        if (!_active.TryRemove(key, out var info))
         {
             throw new InvalidOperationException("Double free or foreign pointer detected.");
         }
 
-        var hdr = (AllocationHeader*)((byte*)userPtr - HeaderSize);
+        var rawPtr = info.RawPtr;
+        var reservedSize = info.ReservedSize;
+        var expectedBackend = info.Backend;
+#else
+        var rawPtr = (nint)((byte*)header - header->GuardPrefix);
+        var reservedSize = header->ReservedSize;
+        var expectedBackend = header->Backend;
+#endif
 
         try
         {
-            if (hdr->Magic != MagicValue)
+            if (header->Magic != MagicValue)
             {
                 throw new InvalidOperationException("Foreign pointer detected.");
             }
+
+            header->Magic = FreedValue;
         }
         catch (AccessViolationException)
         {
             throw new InvalidOperationException("Foreign pointer detected.");
         }
 
-        var guardPrefix = hdr->GuardPrefix;
-        var reservedSize = hdr->ReservedSize;
-        var allocationBackend = hdr->Backend;
-        var rawPtr = (byte*)hdr - guardPrefix;
-
-        hdr->Magic = FreedValue;
-
-        if (backend != allocationBackend)
+        if (backend != expectedBackend)
         {
             throw new InvalidOperationException("Allocator backend mismatch.");
         }
 
-        switch (allocationBackend)
+        switch (expectedBackend)
         {
             case NativeAllocatorBackend.DotNetUnmanaged:
-                NativeMemory.Free(rawPtr);
+                NativeMemory.Free((void*)rawPtr);
                 return;
 
             case NativeAllocatorBackend.PlatformInvoke:
                 if (OperatingSystem.IsWindows())
                 {
-                    if (!Native.VirtualFree((nint)rawPtr, 0, Native.MEM_RELEASE))
+                    if (!Native.VirtualFree(rawPtr, 0, Native.MEM_RELEASE))
                     {
                         ThrowLastError("VirtualFree failed");
                     }
