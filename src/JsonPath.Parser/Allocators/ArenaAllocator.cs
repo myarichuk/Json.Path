@@ -1,7 +1,5 @@
 using System;
 using System.Runtime.CompilerServices;
-using System.Threading;
-
 namespace JsonPath.Parser.Allocators;
 
 /// <summary>
@@ -17,7 +15,6 @@ public unsafe class ArenaAllocator : IDisposable
     private ArenaSegment* _first;
     private ArenaSegment* _current;
     private bool _disposed;
-    private int _disposeState; // 0=alive, 1=disposing, 2=disposed
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ArenaAllocator"/> class.
@@ -109,61 +106,54 @@ public unsafe class ArenaAllocator : IDisposable
         (value + (align - 1)) & ~(align - 1);
 
 
-    private void ReleaseUnmanagedResources()
-    {
-        lock (_globalLock)
-        {
-            var cur = _first;
-            _first = null;
-            _current = null;
-
-            while (cur != null)
-            {
-                var next = cur->Next;
-
-                if (cur->Base != null)
-                {
-                    NativeAllocator.Free(cur->Base);
-                    cur->Base = null;
-                }
-
-                NativeAllocator.Free(cur);
-                cur = next;
-            }
-        }
-    }
-
     public void Dispose()
     {
-        if (Interlocked.Exchange(ref _disposeState, 1) != 0)
-        {
-            return;
-        }
-
-        _disposed = true;
         lock (_globalLock)
         {
+            if (_disposed)
+            {
+                return;
+            }
+
+            _disposed = true;
             ReleaseUnmanagedResources();
         }
 
-        Volatile.Write(ref _disposeState, 2);
         GC.SuppressFinalize(this);
     }
 
     ~ArenaAllocator()
     {
-        if (Interlocked.Exchange(ref _disposeState, 1) != 0)
+        lock (_globalLock)
         {
-            return;
-        }
+            if (_disposed)
+            {
+                return;
+            }
 
-        try
-        {
+            _disposed = true;
             ReleaseUnmanagedResources();
         }
-        finally
+    }
+
+    private void ReleaseUnmanagedResources()
+    {
+        var cur = _first;
+        _first = null;
+        _current = null;
+
+        while (cur != null)
         {
-            Volatile.Write(ref _disposeState, 2);
+            var next = cur->Next;
+
+            if (cur->Base != null)
+            {
+                NativeAllocator.Free(cur->Base);
+                cur->Base = null;
+            }
+
+            NativeAllocator.Free(cur);
+            cur = next;
         }
     }
 }
