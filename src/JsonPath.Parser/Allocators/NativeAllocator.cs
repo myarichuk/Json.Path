@@ -165,9 +165,21 @@ public static unsafe class NativeAllocator
         var reservedSize = info.ReservedSize;
         var expectedBackend = info.Backend;
 #else
-        var rawPtr = (nint)((byte*)header - header->GuardPrefix);
-        var reservedSize = header->ReservedSize;
-        var expectedBackend = header->Backend;
+        nint rawPtr = 0;
+        nuint reservedSize = 0;
+        NativeAllocatorBackend expectedBackend = backend;
+
+        try
+        {
+            var guardPrefix = header->GuardPrefix;
+            rawPtr = (nint)((byte*)header - guardPrefix);
+            reservedSize = header->ReservedSize;
+            expectedBackend = header->Backend;
+        }
+        catch (AccessViolationException)
+        {
+            throw new InvalidOperationException("Foreign pointer detected.");
+        }
 #endif
 
         try
