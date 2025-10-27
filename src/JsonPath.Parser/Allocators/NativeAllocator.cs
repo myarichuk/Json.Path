@@ -29,6 +29,9 @@ public static unsafe class NativeAllocator
     private static readonly nuint HeaderSize = (nuint)sizeof(AllocationHeader);
     private static readonly nuint PageSize = (nuint)Environment.SystemPageSize;
 
+    private static bool IsWindowsPlatform()
+        => RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+
     // ConcurrentDictionary ensures async/thread safety
 #if DEBUG
     private static readonly ConcurrentDictionary<nint, AllocationInfo> _active = new();
@@ -95,8 +98,12 @@ public static unsafe class NativeAllocator
 
         void* rawPtr = backend switch
         {
+#if NET8_0_OR_GREATER
             NativeAllocatorBackend.DotNetUnmanaged => NativeMemory.Alloc(total),
-            _ when OperatingSystem.IsWindows()
+#else
+            NativeAllocatorBackend.DotNetUnmanaged => (void*)Marshal.AllocHGlobal((IntPtr)checked((nint)total)),
+#endif
+            _ when IsWindowsPlatform()
                 => (void*)Native.VirtualAlloc(0, alignedTotal, Native.MEM_RESERVE | Native.MEM_COMMIT, Native.PAGE_READWRITE),
             _ => (void*)Native.mmap(IntPtr.Zero, alignedTotal, Native.PROT_READ | Native.PROT_WRITE,
                                     Native.MAP_PRIVATE | Native.MAP_ANONYMOUS, -1, 0),
@@ -205,11 +212,15 @@ public static unsafe class NativeAllocator
         switch (expectedBackend)
         {
             case NativeAllocatorBackend.DotNetUnmanaged:
+#if NET8_0_OR_GREATER
                 NativeMemory.Free((void*)rawPtr);
+#else
+                Marshal.FreeHGlobal((IntPtr)rawPtr);
+#endif
                 return;
 
             case NativeAllocatorBackend.PlatformInvoke:
-                if (OperatingSystem.IsWindows())
+                if (IsWindowsPlatform())
                 {
                     if (!Native.VirtualFree(rawPtr, 0, Native.MEM_RELEASE))
                     {
@@ -228,7 +239,7 @@ public static unsafe class NativeAllocator
     }
 
     private static bool IsMmapFailure(void* ptr)
-        => !OperatingSystem.IsWindows() && (nint)ptr == -1;
+        => !IsWindowsPlatform() && (nint)ptr == -1;
 
     private static void AlignToPage(void* ptr, nuint length, out void* alignedPtr, out nuint alignedLength)
     {
@@ -288,7 +299,7 @@ public static unsafe class NativeAllocator
             return;
         }
 
-        if (OperatingSystem.IsWindows())
+        if (IsWindowsPlatform())
         {
             if (!Native.VirtualProtect((nint)ptr, length, Native.PAGE_NOACCESS, out _))
             {
@@ -353,7 +364,7 @@ public static unsafe class NativeAllocator
             }
         }
 
-        if (OperatingSystem.IsWindows())
+        if (IsWindowsPlatform())
         {
             var prot = mode switch
             {
@@ -391,6 +402,7 @@ public static unsafe class NativeAllocator
 }
 
 
+
 internal static partial class Native
 {
     public const string Kernel32 = "kernel32.dll";
@@ -403,6 +415,7 @@ internal static partial class Native
     public const int PROT_NONE = 0, PROT_READ = 1, PROT_WRITE = 2;
     public const int MAP_PRIVATE = 2, MAP_ANONYMOUS = 0x20;
 
+#if NET7_0_OR_GREATER
     [LibraryImport(Kernel32, SetLastError = true)]
     public static partial nint VirtualAlloc(nint lpAddress, nuint dwSize, uint flAllocationType, uint flProtect);
 
@@ -416,6 +429,21 @@ internal static partial class Native
 
     [LibraryImport(Kernel32, SetLastError = true)]
     public static partial nuint VirtualQuery(nint lpAddress, out MEMORY_BASIC_INFORMATION lpBuffer, nuint dwLength);
+#else
+    [DllImport(Kernel32, SetLastError = true, EntryPoint = "VirtualAlloc")]
+    public static extern nint VirtualAlloc(nint lpAddress, nuint dwSize, uint flAllocationType, uint flProtect);
+
+    [DllImport(Kernel32, SetLastError = true, EntryPoint = "VirtualFree")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool VirtualFree(nint lpAddress, nuint dwSize, uint dwFreeType);
+
+    [DllImport(Kernel32, SetLastError = true, EntryPoint = "VirtualProtect")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool VirtualProtect(nint lpAddress, nuint dwSize, uint flNewProtect, out uint lpflOldProtect);
+
+    [DllImport(Kernel32, SetLastError = true, EntryPoint = "VirtualQuery")]
+    public static extern nuint VirtualQuery(nint lpAddress, out MEMORY_BASIC_INFORMATION lpBuffer, nuint dwLength);
+#endif
 
     [StructLayout(LayoutKind.Sequential)]
     public struct MEMORY_BASIC_INFORMATION
@@ -429,6 +457,7 @@ internal static partial class Native
         public uint Type;
     }
 
+#if NET7_0_OR_GREATER
     [LibraryImport("libc", SetLastError = true)]
     public static partial IntPtr mmap(IntPtr addr, nuint length, int prot, int flags, int fd, long offset);
 
@@ -437,4 +466,14 @@ internal static partial class Native
 
     [LibraryImport("libc", SetLastError = true)]
     public static partial int mprotect(IntPtr addr, nuint len, int prot);
+#else
+    [DllImport("libc", SetLastError = true, EntryPoint = "mmap")]
+    public static extern IntPtr mmap(IntPtr addr, nuint length, int prot, int flags, int fd, long offset);
+
+    [DllImport("libc", SetLastError = true, EntryPoint = "munmap")]
+    public static extern int munmap(IntPtr addr, nuint length);
+
+    [DllImport("libc", SetLastError = true, EntryPoint = "mprotect")]
+    public static extern int mprotect(IntPtr addr, nuint len, int prot);
+#endif
 }
