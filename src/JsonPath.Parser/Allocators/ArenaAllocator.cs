@@ -1,3 +1,4 @@
+using System;
 using JsonPath.Parser.Allocators;
 
 /*
@@ -66,13 +67,16 @@ using JsonPath.Parser.Allocators;
  */
 public unsafe class ArenaAllocator : IDisposable
 {
+    private static readonly nuint DefaultInitialSegmentSize = (nuint)(64 * 1024);
+    private static readonly nuint DefaultPageSize = (nuint)Environment.SystemPageSize;
+
     private ArenaSegment* _first;
     private ArenaSegment* _current;
     private readonly nuint _maxSegmentSize;
     private readonly NativeAllocatorBackend _backend;
     private bool _disposed;
 
-    public ArenaAllocator(nuint initialSize = 64 * 1024, nuint maxSize = 256 * 1024 * 1024,
+    public ArenaAllocator(nuint initialSize = (nuint)(64 * 1024), nuint maxSize = (nuint)(256 * 1024 * 1024),
                           NativeAllocatorBackend backend = NativeAllocatorBackend.DotNetUnmanaged)
     {
         _maxSegmentSize = maxSize;
@@ -105,12 +109,12 @@ public unsafe class ArenaAllocator : IDisposable
 
             if (nextSize < size)
             {
-                nextSize = AlignUp(size, 4096);
+                nextSize = AlignUp(size, DefaultPageSize);
             }
 
             if (nextSize > _maxSegmentSize)
             {
-                nextSize = AlignUp(size, 4096); // fallback if request > maxSegmentSize
+                nextSize = AlignUp(size, DefaultPageSize); // fallback if request > maxSegmentSize
             }
 
             var newSeg = AllocateSegment(nextSize);
@@ -147,8 +151,13 @@ public unsafe class ArenaAllocator : IDisposable
 
     private nuint NextSegmentSize(nuint prev, nuint req)
     {
-        var doubled = prev == 0 ? 64 * 1024 : Math.Min(prev * 2, _maxSegmentSize);
-        return req > doubled ? AlignUp(req, 4096) : doubled;
+        var doubled = prev == 0
+            ? DefaultInitialSegmentSize
+            : prev > _maxSegmentSize / 2
+                ? _maxSegmentSize
+                : prev * 2;
+
+        return req > doubled ? AlignUp(req, DefaultPageSize) : doubled;
     }
 
     private static nuint AlignUp(nuint value, nuint align)
