@@ -10,7 +10,7 @@ public class SubScannerRepository: IEnumerable<ISubScanner>
     {
         foreach (var (literal, kind) in TokenKindExtensions.TokenLookup)
         {
-            _tokenScanners.Add(new FixedStringScanner(literal, kind));
+            _tokenScanners.Add(new TokenScanner(literal, kind));
         }
 
         //TODO: don't forget to add other token scanners like one for identifiers

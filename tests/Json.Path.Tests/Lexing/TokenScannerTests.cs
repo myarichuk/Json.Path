@@ -3,7 +3,7 @@ using Xunit;
 
 namespace JsonPath.Tests.Lexer
 {
-    public class FixedStringScannerTests
+    public class TokenScannerTests
     {
         private static ScanContext CreateContext(string input) => new(input.AsSpan());
 
@@ -11,7 +11,7 @@ namespace JsonPath.Tests.Lexer
         public void MatchesLiteral_AtStart()
         {
             var ctx = CreateContext("$.store");
-            var subscanner = new FixedStringScanner("$", TokenKind.Root);
+            var subscanner = new TokenScanner("$", TokenKind.Root);
 
             var result = subscanner.TryScan(ref ctx, out var token);
 
@@ -26,7 +26,7 @@ namespace JsonPath.Tests.Lexer
         public void DoesNotMatch_DifferentCharacter()
         {
             var ctx = CreateContext("a.store");
-            var subscanner = new FixedStringScanner("$", TokenKind.Root);
+            var subscanner = new TokenScanner("$", TokenKind.Root);
 
             var result = subscanner.TryScan(ref ctx, out var token);
 
@@ -39,7 +39,7 @@ namespace JsonPath.Tests.Lexer
         public void ShouldMatch_Multicharacter()
         {
             var ctx = CreateContext("..book");
-            var subscanner = new FixedStringScanner("..", TokenKind.DotDot);
+            var subscanner = new TokenScanner("..", TokenKind.DotDot);
 
             var result = subscanner.TryScan(ref ctx, out var token);
 
@@ -54,7 +54,7 @@ namespace JsonPath.Tests.Lexer
         public void DoesNotMatch_BadPrefix()
         {
             var ctx = CreateContext(".book");
-            var subscanner = new FixedStringScanner("..", TokenKind.DotDot);
+            var subscanner = new TokenScanner("..", TokenKind.DotDot);
 
             var result = subscanner.TryScan(ref ctx, out var token);
 
@@ -67,7 +67,7 @@ namespace JsonPath.Tests.Lexer
         public void DoesNotMatch_InputTooShort()
         {
             var ctx = CreateContext(".");
-            var subscanner = new FixedStringScanner("..", TokenKind.DotDot);
+            var subscanner = new TokenScanner("..", TokenKind.DotDot);
 
             var result = subscanner.TryScan(ref ctx, out var token);
 
@@ -83,7 +83,7 @@ namespace JsonPath.Tests.Lexer
             ctx.Line = 10;
             ctx.Column = 5;
 
-            var subscanner = new FixedStringScanner("$", TokenKind.Root);
+            var subscanner = new TokenScanner("$", TokenKind.Root);
             var result = subscanner.TryScan(ref ctx, out var token);
 
             Assert.True(result);
@@ -95,7 +95,7 @@ namespace JsonPath.Tests.Lexer
         public void Should_ConsumeContextIfNeeded()
         {
             var ctx = CreateContext("$$");
-            var subscanner = new FixedStringScanner("$", TokenKind.Root);
+            var subscanner = new TokenScanner("$", TokenKind.Root);
 
             Assert.True(subscanner.TryScan(ref ctx, out _));
             Assert.True(subscanner.TryScan(ref ctx, out _));

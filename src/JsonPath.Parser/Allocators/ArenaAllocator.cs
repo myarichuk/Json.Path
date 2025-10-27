@@ -1,159 +1,205 @@
-using System;
-using System.Runtime.CompilerServices;
-namespace JsonPath.Parser.Allocators;
+using JsonPath.Parser.Allocators;
 
-/// <summary>
-/// A growable bump allocator that allocates memory from chained unmanaged segments.
-/// </summary>
+/*
+| Method                                                             | Size   | AllocationsPerRequest | Mean            | Error           | StdDev         | Median          | Ratio  | RatioSD | Allocated | Alloc Ratio |
+|------------------------------------------------------------------- |------- |---------------------- |----------------:|----------------:|---------------:|----------------:|-------:|--------:|----------:|------------:|
+| NativeMemory.Alloc/Free                                            | 64     | 10                    |        681.3 ns |        68.67 ns |       201.4 ns |        619.0 ns |   1.09 |    0.46 |         - |          NA |
+| 'ArenaAllocator [P/Invoke] (create -> alloc -> dispose)'           | 64     | 10                    |     31,743.1 ns |     1,193.95 ns |     3,520.4 ns |     32,426.8 ns |  50.80 |   15.87 |      48 B |          NA |
+| 'ArenaAllocator [NativeMemory.Alloc] (create -> alloc -> dispose)' | 64     | 10                    |     27,821.2 ns |     1,457.54 ns |     4,274.7 ns |     28,579.8 ns |  44.52 |   14.75 |      48 B |          NA |
+| 'Varena (create -> alloc -> dispose)'                              | 64     | 10                    |     27,640.6 ns |     1,924.43 ns |     5,427.9 ns |     25,462.6 ns |  44.23 |   15.69 |     216 B |          NA |
+|                                                                    |        |                       |                 |                 |                |                 |        |         |           |             |
+| NativeMemory.Alloc/Free                                            | 64     | 100                   |     13,934.8 ns |       901.68 ns |     2,658.6 ns |     14,240.8 ns |   1.04 |    0.30 |         - |          NA |
+| 'ArenaAllocator [P/Invoke] (create -> alloc -> dispose)'           | 64     | 100                   |     49,484.8 ns |     2,907.41 ns |     8,572.6 ns |     49,620.6 ns |   3.70 |    1.02 |      48 B |          NA |
+| 'ArenaAllocator [NativeMemory.Alloc] (create -> alloc -> dispose)' | 64     | 100                   |     34,574.0 ns |     1,945.23 ns |     5,735.6 ns |     32,570.4 ns |   2.58 |    0.70 |      48 B |          NA |
+| 'Varena (create -> alloc -> dispose)'                              | 64     | 100                   |     27,803.2 ns |       887.42 ns |     2,531.9 ns |     28,204.1 ns |   2.08 |    0.48 |     216 B |          NA |
+|                                                                    |        |                       |                 |                 |                |                 |        |         |           |             |
+| NativeMemory.Alloc/Free                                            | 64     | 1000                  |     69,656.3 ns |     4,533.50 ns |    13,367.1 ns |     73,638.8 ns |   1.04 |    0.30 |         - |          NA |
+| 'ArenaAllocator [P/Invoke] (create -> alloc -> dispose)'           | 64     | 1000                  |     28,057.0 ns |     1,262.73 ns |     3,723.2 ns |     28,919.3 ns |   0.42 |    0.11 |      48 B |          NA |
+| 'ArenaAllocator [NativeMemory.Alloc] (create -> alloc -> dispose)' | 64     | 1000                  |     26,491.1 ns |     1,005.12 ns |     2,963.6 ns |     26,522.7 ns |   0.40 |    0.10 |      48 B |          NA |
+| 'Varena (create -> alloc -> dispose)'                              | 64     | 1000                  |     75,791.0 ns |     1,689.04 ns |     4,927.0 ns |     74,788.4 ns |   1.13 |    0.25 |     216 B |          NA |
+|                                                                    |        |                       |                 |                 |                |                 |        |         |           |             |
+| NativeMemory.Alloc/Free                                            | 1024   | 10                    |        733.5 ns |        51.97 ns |       152.4 ns |        772.8 ns |   1.05 |    0.32 |         - |          NA |
+| 'ArenaAllocator [P/Invoke] (create -> alloc -> dispose)'           | 1024   | 10                    |     29,511.8 ns |     1,089.74 ns |     3,001.5 ns |     29,719.2 ns |  42.15 |   10.46 |      48 B |          NA |
+| 'ArenaAllocator [NativeMemory.Alloc] (create -> alloc -> dispose)' | 1024   | 10                    |     41,889.4 ns |     5,395.88 ns |    15,909.9 ns |     32,219.7 ns |  59.83 |   26.82 |      48 B |          NA |
+| 'Varena (create -> alloc -> dispose)'                              | 1024   | 10                    |     47,193.7 ns |     4,706.30 ns |    13,876.6 ns |     41,856.6 ns |  67.41 |   25.29 |     216 B |          NA |
+|                                                                    |        |                       |                 |                 |                |                 |        |         |           |             |
+| NativeMemory.Alloc/Free                                            | 1024   | 100                   |      8,771.0 ns |       595.36 ns |     1,727.3 ns |      8,810.7 ns |   1.05 |    0.33 |         - |          NA |
+| 'ArenaAllocator [P/Invoke] (create -> alloc -> dispose)'           | 1024   | 100                   |     32,078.9 ns |     2,410.58 ns |     6,955.1 ns |     30,994.4 ns |   3.83 |    1.27 |      48 B |          NA |
+| 'ArenaAllocator [NativeMemory.Alloc] (create -> alloc -> dispose)' | 1024   | 100                   |     50,128.5 ns |     3,615.20 ns |    10,659.5 ns |     49,895.6 ns |   5.99 |    1.97 |      48 B |          NA |
+| 'Varena (create -> alloc -> dispose)'                              | 1024   | 100                   |    136,300.5 ns |    10,822.79 ns |    31,911.3 ns |    134,565.3 ns |  16.29 |    5.61 |     216 B |          NA |
+|                                                                    |        |                       |                 |                 |                |                 |        |         |           |             |
+| NativeMemory.Alloc/Free                                            | 1024   | 1000                  |     80,232.1 ns |     5,240.67 ns |    15,452.2 ns |     78,808.5 ns |   1.04 |    0.29 |         - |          NA |
+| 'ArenaAllocator [P/Invoke] (create -> alloc -> dispose)'           | 1024   | 1000                  |     34,754.4 ns |     1,686.98 ns |     4,618.1 ns |     34,414.2 ns |   0.45 |    0.11 |      48 B |          NA |
+| 'ArenaAllocator [NativeMemory.Alloc] (create -> alloc -> dispose)' | 1024   | 1000                  |     39,886.8 ns |     3,045.99 ns |     8,837.0 ns |     39,271.8 ns |   0.52 |    0.15 |      48 B |          NA |
+| 'Varena (create -> alloc -> dispose)'                              | 1024   | 1000                  |    587,031.5 ns |    48,607.43 ns |   143,320.1 ns |    544,424.3 ns |   7.60 |    2.40 |     216 B |          NA |
+|                                                                    |        |                       |                 |                 |                |                 |        |         |           |             |
+| NativeMemory.Alloc/Free                                            | 16384  | 10                    |        949.6 ns |        75.82 ns |       220.0 ns |        911.3 ns |   1.05 |    0.33 |         - |          NA |
+| 'ArenaAllocator [P/Invoke] (create -> alloc -> dispose)'           | 16384  | 10                    |     31,291.1 ns |     1,170.33 ns |     3,300.9 ns |     30,276.7 ns |  34.54 |    7.96 |      48 B |          NA |
+| 'ArenaAllocator [NativeMemory.Alloc] (create -> alloc -> dispose)' | 16384  | 10                    |     31,944.7 ns |       644.83 ns |     1,850.1 ns |     31,743.1 ns |  35.26 |    7.49 |      48 B |          NA |
+| 'Varena (create -> alloc -> dispose)'                              | 16384  | 10                    |    157,924.0 ns |    13,081.00 ns |    38,569.6 ns |    145,803.7 ns | 174.32 |   56.00 |     216 B |          NA |
+|                                                                    |        |                       |                 |                 |                |                 |        |         |           |             |
+| NativeMemory.Alloc/Free                                            | 16384  | 100                   |      7,167.0 ns |       752.73 ns |     2,219.4 ns |      7,341.7 ns |   1.10 |    0.48 |         - |          NA |
+| 'ArenaAllocator [P/Invoke] (create -> alloc -> dispose)'           | 16384  | 100                   |     24,808.6 ns |     1,575.33 ns |     4,644.9 ns |     24,824.6 ns |   3.79 |    1.33 |      48 B |          NA |
+| 'ArenaAllocator [NativeMemory.Alloc] (create -> alloc -> dispose)' | 16384  | 100                   |     27,155.8 ns |     3,737.85 ns |    10,542.7 ns |     22,182.9 ns |   4.15 |    2.07 |      48 B |          NA |
+| 'Varena (create -> alloc -> dispose)'                              | 16384  | 100                   |    585,591.4 ns |    28,604.64 ns |    83,892.5 ns |    561,414.6 ns |  89.56 |   29.41 |     216 B |          NA |
+|                                                                    |        |                       |                 |                 |                |                 |        |         |           |             |
+| NativeMemory.Alloc/Free                                            | 16384  | 1000                  |     96,358.2 ns |    10,203.81 ns |    30,086.2 ns |     86,255.9 ns |   1.10 |    0.49 |         - |          NA |
+| 'ArenaAllocator [P/Invoke] (create -> alloc -> dispose)'           | 16384  | 1000                  |     87,183.8 ns |     7,489.16 ns |    22,081.9 ns |     84,282.7 ns |   0.99 |    0.40 |      48 B |          NA |
+| 'ArenaAllocator [NativeMemory.Alloc] (create -> alloc -> dispose)' | 16384  | 1000                  |     68,397.6 ns |     2,398.91 ns |     6,882.9 ns |     67,918.8 ns |   0.78 |    0.25 |      48 B |          NA |
+| 'Varena (create -> alloc -> dispose)'                              | 16384  | 1000                  |  7,052,537.6 ns |   480,043.46 ns | 1,377,334.8 ns |  6,729,882.8 ns |  80.33 |   29.35 |     216 B |          NA |
+|                                                                    |        |                       |                 |                 |                |                 |        |         |           |             |
+| NativeMemory.Alloc/Free                                            | 262144 | 10                    |      6,238.5 ns |       940.81 ns |     2,744.4 ns |      4,716.0 ns |   1.17 |    0.67 |         - |          NA |
+| 'ArenaAllocator [P/Invoke] (create -> alloc -> dispose)'           | 262144 | 10                    |     40,562.4 ns |     2,995.07 ns |     8,831.0 ns |     39,597.7 ns |   7.58 |    3.10 |      48 B |          NA |
+| 'ArenaAllocator [NativeMemory.Alloc] (create -> alloc -> dispose)' | 262144 | 10                    |     36,377.5 ns |     2,325.75 ns |     6,857.5 ns |     34,769.4 ns |   6.80 |    2.67 |      48 B |          NA |
+| 'Varena (create -> alloc -> dispose)'                              | 262144 | 10                    |  1,054,982.8 ns |    29,083.95 ns |    85,298.2 ns |  1,049,815.8 ns | 197.20 |   68.90 |     216 B |          NA |
+|                                                                    |        |                       |                 |                 |                |                 |        |         |           |             |
+| NativeMemory.Alloc/Free                                            | 262144 | 100                   |     50,967.9 ns |    13,180.19 ns |    38,862.1 ns |     29,372.0 ns |   1.46 |    1.35 |         - |          NA |
+| 'ArenaAllocator [P/Invoke] (create -> alloc -> dispose)'           | 262144 | 100                   |     63,601.7 ns |     2,883.69 ns |     8,502.6 ns |     62,984.7 ns |   1.82 |    0.82 |      48 B |          NA |
+| 'ArenaAllocator [NativeMemory.Alloc] (create -> alloc -> dispose)' | 262144 | 100                   |     67,504.3 ns |     2,833.87 ns |     8,130.9 ns |     65,674.8 ns |   1.93 |    0.86 |      48 B |          NA |
+| 'Varena (create -> alloc -> dispose)'                              | 262144 | 100                   | 13,919,101.0 ns | 1,531,223.28 ns | 4,514,846.7 ns | 13,389,590.6 ns | 397.84 |  220.44 |     216 B |          NA |
+|                                                                    |        |                       |                 |                 |                |                 |        |         |           |             |
+| NativeMemory.Alloc/Free                                            | 262144 | 1000                  |    563,601.6 ns |   108,575.11 ns |   320,136.2 ns |    387,975.7 ns |   1.39 |    1.14 |         - |          NA |
+| 'ArenaAllocator [P/Invoke] (create -> alloc -> dispose)'           | 262144 | 1000                  |    220,775.0 ns |    17,270.93 ns |    50,923.7 ns |    216,925.4 ns |   0.55 |    0.32 |      48 B |          NA |
+| 'ArenaAllocator [NativeMemory.Alloc] (create -> alloc -> dispose)' | 262144 | 1000                  |    178,131.9 ns |    11,901.01 ns |    34,527.0 ns |    182,215.2 ns |   0.44 |    0.25 |      48 B |          NA |
+| 'Varena (create -> alloc -> dispose)'                              | 262144 | 1000                  |              NA |              NA |             NA |              NA |      ? |       ? |        NA |           ? |
+
+ */
 public unsafe class ArenaAllocator : IDisposable
 {
-    private const nuint DefaultSegmentSize = 10 * 1024 * 1024; // 10 MB
-    private const nuint MaxSegmentSize = 256 * 1024 * 1024;    // 256 MB cap
-    private static readonly nuint DefaultAlignment = (nuint)IntPtr.Size;
-
-    private readonly object _globalLock = new object();
     private ArenaSegment* _first;
     private ArenaSegment* _current;
+    private readonly nuint _maxSegmentSize;
+    private readonly NativeAllocatorBackend _backend;
     private bool _disposed;
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="ArenaAllocator"/> class.
-    /// </summary>
-    /// <param name="initialSize">Size of the first segment to be allocated</param>
-    /// <remarks>Each new segment would have it's size doubled (up to a cap)</remarks>
-    public ArenaAllocator(nuint initialSize = DefaultSegmentSize)
+    public ArenaAllocator(nuint initialSize = 64 * 1024, nuint maxSize = 256 * 1024 * 1024,
+                          NativeAllocatorBackend backend = NativeAllocatorBackend.DotNetUnmanaged)
     {
-        _first = AllocateNew(initialSize);
-        _current = _first;
+        _maxSegmentSize = maxSize;
+        _backend = backend;
+        _first = _current = AllocateSegment(initialSize);
     }
 
-    /// <summary>
-    /// Allocates a block of unmanaged memory from the arena.
-    /// Grows automatically when current segment runs out of space.
-    /// </summary>
-    /// <returns>Pointer to a new segment</returns>
-    public void* Alloc(nuint size, nuint align = 0)
+    public void* Alloc(nuint size, nuint align = 8)
     {
-        align = align == 0 ? DefaultAlignment : align;
-
-        lock (_globalLock)
+        if (_disposed)
         {
-            ObjectDisposedException.ThrowIf(_disposed, this);
+            throw new ObjectDisposedException(nameof(ArenaAllocator));
+        }
 
-            if (_current is null)
+        if (size == 0)
+        {
+            return null;
+        }
+
+        var seg = _current;
+        align = AlignUp(align, (nuint)IntPtr.Size);
+        if (seg->TryAlloc(size, align, out var ptr))
+        {
+            return ptr;
+        }
+
+        while (true)
+        {
+            var nextSize = NextSegmentSize(seg->Size, size);
+
+            if (nextSize < size)
             {
-                var initial = AllocateNew(size);
-
-                if (_first is null)
-                {
-                    _first = initial;
-                }
-
-                _current = initial;
+                nextSize = AlignUp(size, 4096);
             }
 
-            while (true)
+            if (nextSize > _maxSegmentSize)
             {
-                var current = _current;
+                nextSize = AlignUp(size, 4096); // fallback if request > maxSegmentSize
+            }
 
-                if (current is not null && current->TryAlloc(size, align, out var ptr))
-                {
-                    return ptr;
-                }
+            var newSeg = AllocateSegment(nextSize);
+            seg->Next = newSeg;
+            _current = newSeg;
+            seg = newSeg;
 
-                var newSeg = AllocateNew(size);
+            if (seg->TryAlloc(size, align, out ptr))
+            {
+                return ptr;
+            }
 
-                if (_first is null)
-                {
-                    _first = newSeg;
-                }
-                else if (current is not null)
-                {
-                    current->Next = newSeg;
-                }
-
-                _current = newSeg;
+            if (nextSize == size)
+            {
+                throw new OutOfMemoryException("Failed to allocate memory in arena; request too large.");
             }
         }
     }
 
-    private ArenaSegment* AllocateNew(nuint requestSize)
+
+    private ArenaSegment* AllocateSegment(nuint requestSize)
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
-
-        var prevSize = _current is null ? 0 : _current->Size;
-        var newSize = NextSegmentSize(prevSize, requestSize);
-
-        var seg = (ArenaSegment*)NativeAllocator.Alloc((nuint)sizeof(ArenaSegment));
-        *seg = default; // ensure _offset = 0
-        seg->Base = (byte*)NativeAllocator.Alloc(newSize);
-        seg->Size = newSize;
+        var prevSize = _current == null ? 0 : _current->Size;
+        var segSize = NextSegmentSize(prevSize, requestSize);
+        var total = (nuint)sizeof(ArenaSegment) + segSize;
+        var mem = (byte*)NativeAllocator.Alloc(total, _backend);
+        var seg = (ArenaSegment*)mem;
         seg->Next = null;
-
+        seg->Offset = 0;
+        seg->Size = segSize;
+        seg->Base = mem + sizeof(ArenaSegment);
         return seg;
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static nuint NextSegmentSize(nuint prevSize, nuint request)
+    private nuint NextSegmentSize(nuint prev, nuint req)
     {
-        var baseSize = prevSize == 0 ?
-            DefaultSegmentSize : Math.Min(prevSize * 2, MaxSegmentSize);
-        return request > baseSize ? AlignUp(request, 4096) : baseSize;
+        var doubled = prev == 0 ? 64 * 1024 : Math.Min(prev * 2, _maxSegmentSize);
+        return req > doubled ? AlignUp(req, 4096) : doubled;
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static nuint AlignUp(nuint value, nuint align) =>
-        (value + (align - 1)) & ~(align - 1);
+    private static nuint AlignUp(nuint value, nuint align)
+    {
+        align = RoundUpToPowerOfTwo(align);
+        return (value + (align - 1)) & ~(align - 1);
+    }
 
+    private static nuint RoundUpToPowerOfTwo(nuint x)
+    {
+        if (x == 0)
+        {
+            return 1;
+        }
+
+        x--;
+        x |= x >> 1;
+        x |= x >> 2;
+        x |= x >> 4;
+        x |= x >> 8;
+        x |= x >> 16;
+#if TARGET_64BIT
+        x |= x >> 32;
+#endif
+        return x + 1;
+    }
+
+    public void Reset()
+    {
+        for (var seg = _first; seg != null; seg = seg->Next)
+            seg->Offset = 0;
+        _current = _first;
+    }
 
     public void Dispose()
     {
-        lock (_globalLock)
+        if (_disposed)
         {
-            if (_disposed)
-            {
-                return;
-            }
-
-            _disposed = true;
-            ReleaseUnmanagedResources();
+            return;
         }
 
-        GC.SuppressFinalize(this);
-    }
+        _disposed = true;
 
-    ~ArenaAllocator()
-    {
-        lock (_globalLock)
+        var seg = _first;
+        while (seg != null)
         {
-            if (_disposed)
-            {
-                return;
-            }
-
-            _disposed = true;
-            ReleaseUnmanagedResources();
+            var next = seg->Next;
+            NativeAllocator.Free(seg, _backend);
+            seg = next;
         }
-    }
 
-    private void ReleaseUnmanagedResources()
-    {
-        var cur = _first;
-        _first = null;
-        _current = null;
-
-        while (cur != null)
-        {
-            var next = cur->Next;
-
-            if (cur->Base != null)
-            {
-                NativeAllocator.Free(cur->Base);
-                cur->Base = null;
-            }
-
-            NativeAllocator.Free(cur);
-            cur = next;
-        }
+        _first = _current = null;
     }
 }

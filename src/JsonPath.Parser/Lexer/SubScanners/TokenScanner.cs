@@ -2,7 +2,7 @@ using System.Runtime.CompilerServices;
 
 namespace JsonPath.Parser.Lexer;
 
-public class FixedStringScanner(string literal, TokenKind kind) : ISubScanner
+public class TokenScanner(string literal, TokenKind kind) : ISubScanner
 {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool TryScan(ref ScanContext ctx, out Token token)

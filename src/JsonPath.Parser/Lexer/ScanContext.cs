@@ -1,5 +1,14 @@
 namespace JsonPath.Parser.Lexer;
 
+public readonly struct ScanProjection
+{
+    public int Position { get; init; }
+
+    public int Line { get; init; }
+
+    public int Column { get; init; }
+}
+
 public ref struct ScanContext(ReadOnlySpan<char> input)
 {
     public readonly ReadOnlySpan<char> Input = input;
@@ -45,4 +54,41 @@ public ref struct ScanContext(ReadOnlySpan<char> input)
     }
 
     public ReadOnlySpan<char> Slice(int start) => Input[start..Position];
+
+    public ScanProjection Project(int absolutePosition)
+    {
+        int pos = 0;
+        int line = 1;
+        int column = 1;
+
+        for (; pos < absolutePosition && pos < Input.Length; pos++)
+        {
+            var ch = Input[pos];
+            switch (ch)
+            {
+                case '\r':
+                    if (pos + 1 < Input.Length && Input[pos + 1] == '\n')
+                        pos++;
+                    line++;
+                    column = 1;
+                    break;
+                case '\n':
+                case '\u2028':
+                case '\u2029':
+                    line++;
+                    column = 1;
+                    break;
+                default:
+                    column++;
+                    break;
+            }
+        }
+
+        return new ScanProjection
+        {
+            Position = absolutePosition,
+            Line = line,
+            Column = column,
+        };
+    }
 }

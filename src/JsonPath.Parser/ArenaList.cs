@@ -40,8 +40,7 @@ public unsafe struct ArenaList<T>(in ArenaAllocator arena, nuint initialCapacity
     private void Grow()
     {
         var newCap = _capacity * 2;
-        var newPtr = (T*)_arena.Alloc(newCap * (nuint)sizeof(T), align: (nuint)IntPtr.Size);
-
+        var newPtr = (T*)_arena.Alloc(newCap * (nuint)sizeof(T));
         Buffer.MemoryCopy(
             _base,
             newPtr,

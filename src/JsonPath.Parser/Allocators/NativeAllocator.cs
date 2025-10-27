@@ -82,6 +82,7 @@ public static unsafe class NativeAllocator
         nuint guardPrefix = 0;
         nuint guardSuffix = 0;
 
+
         if (backend is NativeAllocatorBackend.PlatformInvoke)
         {
             alignedTotal = AlignUp(total, PageSize);
