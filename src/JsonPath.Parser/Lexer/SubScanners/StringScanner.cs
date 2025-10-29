@@ -20,13 +20,15 @@ public class StringScanner: ISubScanner
             return false;
         }
 
+        // TODO: handle string escaping
         if (!ctx.TryPeekUntil(1, isSingleQuote ? "'" : "\"", out var stringToken))
         {
             return false;
         }
 
-        token = new Token(TokenKind.String, ctx.Position, stringToken.Length + 1, ctx.Line, ctx.Column);
-
-        return false;
+        // note: don't include the quotes as they are not a part of the string
+        token = new Token(TokenKind.String, ctx.Position + 1, stringToken.Length - 1, ctx.Line, ctx.Column);
+        ctx.Consume(token.Length);
+        return true;
     }
 }

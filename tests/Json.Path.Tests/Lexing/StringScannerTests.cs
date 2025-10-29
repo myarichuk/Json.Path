@@ -1,0 +1,49 @@
+using JsonPath.Parser.Lexer;
+using Xunit;
+
+namespace JsonPath.Tests.Lexer;
+
+public class StringScannerTests
+{
+    private static ScanContext CreateContext(string input) => new(input.AsSpan());
+
+    [Theory]
+    [InlineData("\"")]
+    [InlineData("'")]
+    [InlineData("\"foobar")]
+    [InlineData("'foobar")]
+    [InlineData("foobar'")]
+    [InlineData("foobar\"")]
+    [InlineData("'foobar\"")]
+    [InlineData("\"foobar'")]
+    [InlineData("AaA\"foobar\"")]
+    public void ShouldNotMatch_MalformedStrings(string input)
+    {
+        var ctx = CreateContext(input);
+        var subscanner = new StringScanner();
+
+        var result = subscanner.TryScan(ref ctx, out _);
+        Assert.False(result);
+        Assert.Equal(0, ctx.Position); // do not consume if no match!
+    }
+
+    [Theory]
+    [InlineData("'test'", 1, 4)]
+    [InlineData("'foobar'", 1, 6)]
+    [InlineData("\"foobar\"", 1, 6)]
+    [InlineData("''", 1, 0)]
+    [InlineData("\"\"", 1, 0)]
+    public void CanMatch_ProperStrings(
+        string input,
+        int expectedTokenStart,
+        int expectedLength)
+    {
+        var ctx = CreateContext(input);
+        var subscanner = new StringScanner();
+
+        var result = subscanner.TryScan(ref ctx, out var token);
+        Assert.True(result);
+        Assert.Equal(expectedTokenStart, token.Start);
+        Assert.Equal(expectedLength, token.Length);
+    }
+}

@@ -59,7 +59,7 @@ public static class LexerExtensions
             var matchPos = start + index;
             var projection = ctx.Project(matchPos - ctx.Position);
 
-            token = new Token(TokenKind.Unknown, matchPos, until.Length, projection.Line, projection.Column);
+            token = new Token(TokenKind.Unknown, start, matchPos - ctx.Position, projection.Line, projection.Column);
             return true;
         }
 

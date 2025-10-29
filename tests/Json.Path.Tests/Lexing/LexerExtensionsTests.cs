@@ -51,11 +51,11 @@ public class LexerExtensionsTests
         var input = "abc:def".AsSpan();
         var ctx = new ScanContext(input);
 
-        var success = ctx.TryPeekUntil(0, ":".AsSpan(), out var token);
+        var success = ctx.TryPeekUntil(0, ":", out var token);
 
         Assert.True(success);
-        Assert.Equal(3, token.Start);
-        Assert.Equal(1, token.Length);
+        Assert.Equal(0, token.Start);
+        Assert.Equal(3, token.Length);
     }
 
     [Fact]
