@@ -13,13 +13,13 @@ public class StringScanner: ISubScanner
         token = default;
 
         // only one character can't be string!
-        if (ctx.Remaining <= 1)
+        if (ctx.RemainingLength <= 1)
         {
             return false;
         }
 
         // "short-circuit"
-        if (ctx.Remaining == 2)
+        if (ctx.RemainingLength == 2)
         {
             token = new Token(
                 TokenKind.String,
@@ -48,7 +48,7 @@ public class StringScanner: ISubScanner
             return false;
         }
 
-        var relevantInput = ctx.Input[1..];
+        var relevantInput = ctx.SliceOffset(1);
         var scanned = 0;
         var hasFoundEnd = false;
         do
@@ -56,7 +56,7 @@ public class StringScanner: ISubScanner
             if (relevantInput[scanned..].Length >= 2)
             {
                 var maybeEscape =
-                    ctx.Input.Slice(scanned, 2);
+                    relevantInput.Slice(scanned, 2);
 
                 if (maybeEscape.SequenceEqual(EscapedDoubleQuote))
                 {

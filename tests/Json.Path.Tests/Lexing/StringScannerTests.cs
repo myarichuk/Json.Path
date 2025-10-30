@@ -49,4 +49,21 @@ public class StringScannerTests
         Assert.Equal(expectedTokenStart, token.Start);
         Assert.Equal(expectedLength, token.Length);
     }
+
+    [Theory]
+    [InlineData("foo123\"string_content\"", 14)]
+    [InlineData("foo123\"a\\\"b\"", 4)]
+    [InlineData("foo123\"a__b\"", 4)]
+    [InlineData("foo123\"a\a\bb\"", 4)]
+    public void CanMatch_Not_FromStart(string input, int expecteLength)
+    {
+        var ctx = CreateContext(input);
+        ctx.Consume(6); // simulate mid-lexing
+        var subscanner = new StringScanner();
+
+        var result = subscanner.TryScan(ref ctx, out var token);
+        Assert.True(result);
+        Assert.Equal(7, token.Start);
+        Assert.Equal(expecteLength, token.Length);
+    }
 }

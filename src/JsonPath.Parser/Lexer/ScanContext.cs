@@ -16,10 +16,10 @@ public ref struct ScanContext(ReadOnlySpan<char> input)
     public int Line;
     public int Column;
 
-    public char Current => 
+    public char Current =>
         Position < Input.Length ? Input[Position] : '\0';
 
-    public int Remaining => Input.Length - Position;
+    public int RemainingLength => Input.Length - Position;
 
     public char Peek(int offset = 1) =>
         Position + offset < Input.Length ? Input[Position + offset] : '\0';
@@ -53,7 +53,9 @@ public ref struct ScanContext(ReadOnlySpan<char> input)
         }
     }
 
-    public ReadOnlySpan<char> Slice(int start) => Input[start..Position];
+    public ReadOnlySpan<char> RemainingInput => Input[Position..];
+
+    public ReadOnlySpan<char> SliceOffset(int offset) => Input[(Position + offset)..];
 
     public ScanProjection Project(int absolutePosition)
     {
