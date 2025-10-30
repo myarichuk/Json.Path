@@ -5,6 +5,7 @@ namespace JsonPath.Parser.Lexer;
 public class StringScanner: ISubScanner
 {
     private const string EscapedDoubleQuote = "\\\"";
+    private const string EscapedSingleQuote = "\\'";
     private static readonly string[] EscapeCharacters = [EscapedDoubleQuote];
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -59,6 +60,12 @@ public class StringScanner: ISubScanner
                     relevantInput.Slice(scanned, 2);
 
                 if (maybeEscape.SequenceEqual(EscapedDoubleQuote))
+                {
+                    scanned += 2;
+                    continue;
+                }
+
+                if (isSingleQuote && maybeEscape.SequenceEqual(EscapedSingleQuote))
                 {
                     scanned += 2;
                     continue;
