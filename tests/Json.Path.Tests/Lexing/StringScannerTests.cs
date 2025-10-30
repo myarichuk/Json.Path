@@ -55,6 +55,7 @@ public class StringScannerTests
     [InlineData("foo123\"a\\\"b\"", 4)]
     [InlineData("foo123\"a__b\"", 4)]
     [InlineData("foo123\"a\a\bb\"", 4)]
+    [InlineData("foo1$['a\\'b']", 4)]
     public void CanMatch_Not_FromStart(string input, int expecteLength)
     {
         var ctx = CreateContext(input);
