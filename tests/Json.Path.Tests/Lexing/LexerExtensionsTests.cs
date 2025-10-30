@@ -67,8 +67,8 @@ public class LexerExtensionsTests
         var success = ctx.TryPeekUntil(0, "END".AsSpan(), out var token);
 
         Assert.True(success);
-        Assert.Equal(10, token.Start); // "E" of END
-        Assert.Equal(3, token.Length);
+        Assert.Equal(0, token.Start);
+        Assert.Equal(10, token.Length);
     }
 
     [Fact]
@@ -92,8 +92,8 @@ public class LexerExtensionsTests
         var success = ctx.TryPeekUntil(12, "stop".AsSpan(), out var token);
 
         Assert.True(success);
-        Assert.Equal(17, token.Start);
-        Assert.Equal(4, token.Length);
+        Assert.Equal(12, token.Start);
+        Assert.Equal(5, token.Length);
     }
 
     [Fact]

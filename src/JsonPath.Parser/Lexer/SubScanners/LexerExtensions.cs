@@ -1,3 +1,5 @@
+using System.Buffers;
+
 namespace JsonPath.Parser.Lexer;
 
 public static class LexerExtensions
@@ -25,11 +27,9 @@ public static class LexerExtensions
             start,
             literal.Length,
             projection.Line,
-            projection.Column
-        );
+            projection.Column);
         return true;
     }
-
 
     public static bool TryPeekUntil(this ScanContext ctx, int offset, ReadOnlySpan<char> until, out Token token)
     {
@@ -41,41 +41,55 @@ public static class LexerExtensions
         }
 
         var start = ctx.Position + offset;
-        if (start >= ctx.Input.Length)
+        var input = ctx.Input;
+
+        if (start >= input.Length)
         {
             return false;
         }
 
-        var input = ctx.Input;
+        int matchIndex = -1;
 
         if (until.Length == 1)
         {
-            var index = input[start..].IndexOf(until[0]);
-            if (index < 0)
+            var relevantInputSlice = input[start..];
+
+            var index = relevantInputSlice.IndexOf(until[0]);
+            if (index >= 0)
             {
-                return false;
+                matchIndex = start + index;
             }
-
-            var matchPos = start + index;
-            var projection = ctx.Project(matchPos - ctx.Position);
-
-            token = new Token(TokenKind.Unknown, start, matchPos - ctx.Position, projection.Line, projection.Column);
-            return true;
         }
-
-        var limit = input.Length - until.Length;
-
-        for (var index = start; index <= limit; index++)
+        else
         {
-            if (input[index] == until[0] &&
-                input.Slice(index, until.Length).SequenceEqual(until))
+            var limit = input.Length - until.Length;
+            for (var i = start; i <= limit; i++)
             {
-                var projection = ctx.Project(index - ctx.Position);
-                token = new Token(TokenKind.Unknown, index, until.Length, projection.Line, projection.Column);
-                return true;
+                if (input[i] == until[0] &&
+                    input.Slice(i, until.Length)
+                         .SequenceEqual(until))
+                {
+                    matchIndex = i;
+                    break;
+                }
             }
         }
 
-        return false;
+        if (matchIndex < 0)
+        {
+            return false;
+        }
+
+        var tokenLength = matchIndex - start;
+        var projection = ctx.Project(offset);
+
+        token = new Token(
+            TokenKind.Unknown,
+            start,
+            tokenLength,
+            projection.Line,
+            projection.Column);
+
+        return true;
     }
 }

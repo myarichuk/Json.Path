@@ -13,10 +13,10 @@ public class StringScannerTests
     [InlineData("\"foobar")]
     [InlineData("'foobar")]
     [InlineData("foobar'")]
-    [InlineData("foobar\"")]
-    [InlineData("'foobar\"")]
+    [InlineData("'foobar\\\"")]
     [InlineData("\"foobar'")]
     [InlineData("AaA\"foobar\"")]
+    [InlineData("'fo\"")]
     public void ShouldNotMatch_MalformedStrings(string input)
     {
         var ctx = CreateContext(input);
@@ -29,8 +29,11 @@ public class StringScannerTests
 
     [Theory]
     [InlineData("'test'", 1, 4)]
+    [InlineData("'a'", 1, 1)] // edge case
     [InlineData("'foobar'", 1, 6)]
     [InlineData("\"foobar\"", 1, 6)]
+    [InlineData("\"a\"", 1, 1)] // edge case
+    [InlineData("\"foo\\\"bar\"", 1, 8)] // include escaped character
     [InlineData("''", 1, 0)]
     [InlineData("\"\"", 1, 0)]
     public void CanMatch_ProperStrings(

@@ -4,13 +4,41 @@ namespace JsonPath.Parser.Lexer;
 
 public class StringScanner: ISubScanner
 {
+    private const string EscapedDoubleQuote = "\\\"";
+    private static readonly string[] EscapeCharacters = [EscapedDoubleQuote];
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool TryScan(ref ScanContext ctx, out Token token)
     {
         token = default;
 
-        var isSingleQuote = false;
+        // only one character can't be string!
+        if (ctx.Remaining <= 1)
+        {
+            return false;
+        }
 
+        // "short-circuit"
+        if (ctx.Remaining == 2)
+        {
+            token = new Token(
+                TokenKind.String,
+                ctx.Position + 1,
+                0,
+                ctx.Line,
+                ctx.Column);
+
+            var hasSingleQuotes = ctx.Current == '\'' &&
+                                  ctx.Peek() == '\'';
+            var hasDoubleQuotes = ctx.Current == '"' &&
+                                  ctx.Peek() == '"';
+
+            ctx.Consume(2);
+            return hasSingleQuotes ||
+                   hasDoubleQuotes;
+        }
+
+        var isSingleQuote = false;
         if (ctx.TryPeekForLiteral(0, "'", out _))
         {
             isSingleQuote = true;
@@ -20,15 +48,66 @@ public class StringScanner: ISubScanner
             return false;
         }
 
-        // TODO: handle string escaping
-        if (!ctx.TryPeekUntil(1, isSingleQuote ? "'" : "\"", out var stringToken))
+        var relevantInput = ctx.Input[1..];
+        var scanned = 0;
+        var hasFoundEnd = false;
+        do
+        {
+            if (relevantInput[scanned..].Length >= 2)
+            {
+                var maybeEscape =
+                    ctx.Input.Slice(scanned, 2);
+
+                if (maybeEscape.SequenceEqual(EscapedDoubleQuote))
+                {
+                    scanned += 2;
+                    continue;
+                }
+            }
+
+            var c = relevantInput[scanned];
+            if (c == '"' && isSingleQuote && scanned == ctx.Input.Length - 1)
+            {
+                break;
+            }
+
+            if (c == '\'' && !isSingleQuote && scanned == ctx.Input.Length - 1)
+            {
+                break;
+            }
+
+            if (isSingleQuote && c == '\'')
+            {
+                hasFoundEnd = true;
+                scanned++;
+                break;
+            }
+            else if (!isSingleQuote && c == '"')
+            {
+                hasFoundEnd = true;
+                scanned++;
+                break;
+            }
+
+            scanned++;
+        }
+        while (scanned < relevantInput.Length);
+
+        if (!hasFoundEnd)
         {
             return false;
         }
 
-        // note: don't include the quotes as they are not a part of the string
-        token = new Token(TokenKind.String, ctx.Position + 1, stringToken.Length - 1, ctx.Line, ctx.Column);
-        ctx.Consume(token.Length);
+        var projection = ctx.Project(ctx.Position + scanned);
+
+        token = new Token(
+            TokenKind.String,
+            ctx.Position + 1,
+            projection.Position - ctx.Position - 1,
+            ctx.Line,
+            ctx.Column);
+
+        ctx.Consume(token.Length + 2);
         return true;
     }
 }
