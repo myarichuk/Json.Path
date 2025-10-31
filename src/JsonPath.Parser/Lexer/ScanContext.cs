@@ -57,6 +57,8 @@ public ref struct ScanContext(ReadOnlySpan<char> input)
 
     public ReadOnlySpan<char> SliceOffset(int offset) => Input[(Position + offset)..];
 
+    public ReadOnlySpan<char> SliceFrom(in Token token) => Input.Slice(token.Start, token.Length);
+    
     public ScanProjection Project(int absolutePosition)
     {
         int pos = 0;

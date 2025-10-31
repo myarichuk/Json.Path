@@ -8,7 +8,6 @@ public class StringScanner: ISubScanner
     private const string EscapedSingleQuote = "\\'";
     private static readonly string[] EscapeCharacters = [EscapedDoubleQuote];
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool TryScan(ref ScanContext ctx, out Token token)
     {
         token = default;
@@ -83,13 +82,8 @@ public class StringScanner: ISubScanner
                 break;
             }
 
-            if (isSingleQuote && c == '\'')
-            {
-                hasFoundEnd = true;
-                scanned++;
-                break;
-            }
-            else if (!isSingleQuote && c == '"')
+            if ((isSingleQuote && c == '\'') ||
+                (!isSingleQuote && c == '"'))
             {
                 hasFoundEnd = true;
                 scanned++;

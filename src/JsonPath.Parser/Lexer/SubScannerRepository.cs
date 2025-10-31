@@ -4,21 +4,28 @@ namespace JsonPath.Parser.Lexer;
 
 public class SubScannerRepository: IEnumerable<ISubScanner>
 {
-    private readonly List<ISubScanner> _tokenScanners = [];
+    private static readonly List<ISubScanner> TokenScanners;
 
-    public SubScannerRepository()
+    static SubScannerRepository()
     {
-        foreach (var (literal, kind) in TokenKindExtensions.TokenLookup)
+        TokenScanners = new(TokenKindExtensions.TokenLookup.Count);
+        foreach (var (literal, kind) in
+                 TokenKindExtensions.TokenLookup
+                     .OrderByDescending(
+                         x =>
+                             x.Key.Length))
         {
-            _tokenScanners.Add(new TokenScanner(literal, kind));
+            TokenScanners.Add(new TokenScanner(literal, kind));
         }
 
+        TokenScanners.Add(new StringScanner());
+        
         //TODO: don't forget to add other token scanners like one for identifiers
     }
 
     public IEnumerator<ISubScanner> GetEnumerator() =>
-        _tokenScanners.GetEnumerator();
+        TokenScanners.GetEnumerator();
 
     IEnumerator IEnumerable.GetEnumerator() =>
-        _tokenScanners.GetEnumerator();
+        TokenScanners.GetEnumerator();
 }

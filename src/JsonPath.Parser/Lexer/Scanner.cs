@@ -17,6 +17,7 @@ public readonly struct Scanner(
         tokens = new ArenaList<Token>(allocator);
         errors = new ArenaList<JsonPathError>(allocator);
 
+        // note: the lexer is WIP and not supposed to work yet
         throw new NotImplementedException();
     }
 }
