@@ -43,6 +43,8 @@ public class NumberScannerTests
     [InlineData(".x")]
     [InlineData("x123")]
     [InlineData("")]
+    [InlineData("-notanumber")]
+    [InlineData("-")]
     public void Rejects_Invalid_Or_NonNumber(string input)
     {
         var success = TryScan(input, out _);

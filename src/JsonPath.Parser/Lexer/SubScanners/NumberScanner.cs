@@ -9,6 +9,7 @@ public class NumberScanner: ISubScanner
         var remaining = ctx.RemainingInput;
         var scanned = 0;
         var hadSeenDecimalPoint = false;
+        bool hasDigits = false;
 
         if (ctx.RemainingLength == 0 ||
             (remaining[0] == '.' &&
@@ -20,7 +21,10 @@ public class NumberScanner: ISubScanner
         while (scanned < remaining.Length)
         {
             var @char = remaining[scanned];
-            if (scanned == 0 && @char == '-')
+            if (scanned == 0 &&
+                @char == '-' &&
+                scanned + 1 < remaining.Length &&
+                char.IsDigit(remaining[scanned + 1]))
             {
                 scanned++;
                 continue;
@@ -38,6 +42,7 @@ public class NumberScanner: ISubScanner
             if (char.IsDigit(@char))
             {
                 scanned++;
+                hasDigits = true;
                 continue;
             }
 
@@ -72,7 +77,13 @@ public class NumberScanner: ISubScanner
             break;
         }
 
-        if (scanned > 0)
+        // just in case
+        if (hadSeenDecimalPoint && !hasDigits)
+        {
+            return false;
+        }
+
+        if (scanned > 0 && hasDigits)
         {
             token = new Token(TokenKind.Number, ctx.Position, scanned, ctx.Line, ctx.Column);
             ctx.Consume(scanned);
