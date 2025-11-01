@@ -11,13 +11,32 @@ public class LexerExtensionsTests
         var input = "foobar".AsSpan();
         var ctx = new ScanContext(input);
 
-        var success = ctx.TryPeekForLiteral(0, "foo".AsSpan(), out var token);
+        var success = ctx.TryScanForLiteral(0, "foo".AsSpan(), out var token);
 
         Assert.True(success);
         Assert.Equal(0, token.Start);
         Assert.Equal(3, token.Length);
+
+        // essentially this is the start of token so...
         Assert.Equal(1, token.Line);
-        Assert.Equal(1, token.Column);
+        Assert.Equal(0, token.Column);
+    }
+
+    [Fact]
+    public void TryPeekForLiteral_ShouldMatchLiteralNotAtStart()
+    {
+        var input = "foobar".AsSpan();
+        var ctx = new ScanContext(input);
+        ctx.Consume(2);
+        var success = ctx.TryScanForLiteral(0, "obar".AsSpan(), out var token);
+
+        Assert.True(success);
+        Assert.Equal(2, token.Start);
+        Assert.Equal(4, token.Length);
+
+        // essentially this is the start of token so...
+        Assert.Equal(1, token.Line);
+        Assert.Equal(3, token.Column);
     }
 
     [Fact]
@@ -26,7 +45,7 @@ public class LexerExtensionsTests
         var input = "  foo".AsSpan();
         var ctx = new ScanContext(input);
 
-        var success = ctx.TryPeekForLiteral(2, "foo".AsSpan(), out var token);
+        var success = ctx.TryScanForLiteral(2, "foo".AsSpan(), out var token);
 
         Assert.True(success);
         Assert.Equal(2, token.Start);
@@ -39,7 +58,7 @@ public class LexerExtensionsTests
         var input = "foo".AsSpan();
         var ctx = new ScanContext(input);
 
-        var success = ctx.TryPeekForLiteral(2, "bar".AsSpan(), out var token);
+        var success = ctx.TryScanForLiteral(2, "bar".AsSpan(), out var token);
 
         Assert.False(success);
         Assert.Equal(default, token);

@@ -39,11 +39,11 @@ public class StringScanner: ISubScanner
         }
 
         var isSingleQuote = false;
-        if (ctx.TryPeekForLiteral(0, "'", out _))
+        if (ctx.TryScanForLiteral(0, "'", out _))
         {
             isSingleQuote = true;
         }
-        else if (!ctx.TryPeekForLiteral(0, "\"", out _))
+        else if (!ctx.TryScanForLiteral(0, "\"", out _))
         {
             return false;
         }
@@ -99,12 +99,10 @@ public class StringScanner: ISubScanner
             return false;
         }
 
-        var projection = ctx.Project(ctx.Position + scanned);
-
         token = new Token(
             TokenKind.String,
             ctx.Position + 1,
-            projection.Position - ctx.Position - 1,
+            scanned - 1,
             ctx.Line,
             ctx.Column);
 

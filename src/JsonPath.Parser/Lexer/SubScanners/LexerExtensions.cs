@@ -4,7 +4,7 @@ namespace JsonPath.Parser.Lexer;
 
 public static class LexerExtensions
 {
-    public static bool TryPeekForLiteral(this ScanContext ctx, int offset, ReadOnlySpan<char> literal, out Token token)
+    public static bool TryScanForLiteral(this ScanContext ctx, int offset, ReadOnlySpan<char> literal, out Token token)
     {
         token = default;
 
@@ -20,14 +20,14 @@ public static class LexerExtensions
             return false;
         }
 
-        var projection = ctx.Project(offset);
+        var ctxProjection = ctx.Project(ctx.Position + offset);
 
         token = new Token(
             TokenKind.Unknown,
             start,
             literal.Length,
-            projection.Line,
-            projection.Column);
+            ctxProjection.Line,
+            ctxProjection.Column);
         return true;
     }
 
@@ -81,14 +81,14 @@ public static class LexerExtensions
         }
 
         var tokenLength = matchIndex - start;
-        var projection = ctx.Project(offset);
+        var ctxProjection = ctx.Project(ctx.Position + offset);
 
         token = new Token(
             TokenKind.Unknown,
             start,
             tokenLength,
-            projection.Line,
-            projection.Column);
+            ctxProjection.Line,
+            ctxProjection.Column);
 
         return true;
     }

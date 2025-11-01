@@ -61,32 +61,33 @@ public ref struct ScanContext(ReadOnlySpan<char> input)
     
     public ScanProjection Project(int absolutePosition)
     {
-        int pos = 0;
         int line = 1;
         int column = 1;
 
-        for (; pos < absolutePosition && pos < Input.Length; pos++)
+        int pos = 0;
+        while (pos < absolutePosition && pos < Input.Length)
         {
-            var ch = Input[pos];
-            switch (ch)
+            var ch = Input[pos++];
+            if (ch == '\r')
             {
-                case '\r':
-                    if (pos + 1 < Input.Length && Input[pos + 1] == '\n')
-                        pos++;
-                    line++;
-                    column = 1;
-                    break;
-                case '\n':
-                case '\u2028':
-                case '\u2029':
-                    line++;
-                    column = 1;
-                    break;
-                default:
-                    column++;
-                    break;
+                if (pos < Input.Length && Input[pos] == '\n')
+                    pos++;
+                line++;
+                column = 1;
+            }
+            else if (ch == '\n' || ch == '\u2028' || ch == '\u2029')
+            {
+                line++;
+                column = 1;
+            }
+            else
+            {
+                column++;
             }
         }
+
+        column = Math.Max(1, column - 1);
+
 
         return new ScanProjection
         {

@@ -109,9 +109,8 @@ public class NumberScannerTests
     {
         var success = TryScan(input, out var token, out var consumed);
 
-        var materializedtoken =
-            new ScanContext(input.AsSpan()).SliceFrom(token);
-
+        // var materializedtoken =
+        //     new ScanContext(input.AsSpan()).SliceFrom(token);
         Assert.True(success);
         Assert.Equal(expectedLength, token.Length);
         Assert.Equal(expectedLength, consumed);
