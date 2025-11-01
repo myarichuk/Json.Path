@@ -17,9 +17,6 @@ public class LexerExtensionsTests
         Assert.Equal(0, token.Start);
         Assert.Equal(3, token.Length);
 
-        // essentially this is the start of token so...
-        Assert.Equal(1, token.Line);
-        Assert.Equal(0, token.Column);
     }
 
     [Fact]
@@ -34,9 +31,6 @@ public class LexerExtensionsTests
         Assert.Equal(2, token.Start);
         Assert.Equal(4, token.Length);
 
-        // essentially this is the start of token so...
-        Assert.Equal(1, token.Line);
-        Assert.Equal(3, token.Column);
     }
 
     [Fact]

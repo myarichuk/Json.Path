@@ -77,21 +77,6 @@ public class TokenScannerTests
     }
 
     [Fact]
-    public void ShouldPreserve_Line_Column()
-    {
-        var ctx = CreateContext("$.store");
-        ctx.Line = 10;
-        ctx.Column = 5;
-
-        var subscanner = new TokenScanner("$", TokenKind.Root);
-        var result = subscanner.TryScan(ref ctx, out var token);
-
-        Assert.True(result);
-        Assert.Equal(10, token.Line);
-        Assert.Equal(5, token.Column);
-    }
-
-    [Fact]
     public void Should_ConsumeContextIfNeeded()
     {
         var ctx = CreateContext("$$");

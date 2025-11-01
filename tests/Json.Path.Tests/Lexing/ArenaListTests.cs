@@ -14,7 +14,7 @@ public class ArenaListTests : IDisposable
     public void Add_SingleToken_ShouldStoreCorrectly()
     {
         var list = new ArenaList<Token>(_arena);
-        var tok = new Token(TokenKind.Dot, 5, 1, 1, 6);
+        var tok = new Token(TokenKind.Dot, 5, 1);
 
         list.Add(tok);
 
@@ -22,7 +22,6 @@ public class ArenaListTests : IDisposable
         Assert.Equal(1, span.Length);
         Assert.Equal(TokenKind.Dot, span[0].Kind);
         Assert.Equal(5, span[0].Start);
-        Assert.Equal(6, span[0].Column);
     }
 
     [Fact]
@@ -31,7 +30,7 @@ public class ArenaListTests : IDisposable
         var list = new ArenaList<Token>(_arena);
         for (int i = 0; i < 10; i++)
         {
-            list.Add(new Token(TokenKind.Number, i * 2, 1, 1, i));
+            list.Add(new Token(TokenKind.Number, i * 2, 1));
         }
 
         var span = list.AsSpan();
@@ -41,7 +40,6 @@ public class ArenaListTests : IDisposable
         {
             Assert.Equal(TokenKind.Number, span[i].Kind);
             Assert.Equal(i * 2, span[i].Start);
-            Assert.Equal(i, span[i].Column);
         }
     }
 
@@ -49,11 +47,11 @@ public class ArenaListTests : IDisposable
     public void Add_WhenExceedingCapacity_ShouldGrowAndPreserveContents()
     {
         var list = new ArenaList<Token>(_arena, initialCapacity: 2);
-        list.Add(new Token(TokenKind.Root, 0, 1, 1, 1));
-        list.Add(new Token(TokenKind.Current, 1, 1, 1, 2));
+        list.Add(new Token(TokenKind.Root, 0, 1));
+        list.Add(new Token(TokenKind.Current, 1, 1));
 
         // grow here
-        list.Add(new Token(TokenKind.Dot, 2, 1, 1, 3));
+        list.Add(new Token(TokenKind.Dot, 2, 1));
 
         var span = list.AsSpan();
         Assert.Equal(3, span.Length);
@@ -68,7 +66,7 @@ public class ArenaListTests : IDisposable
         var list = new ArenaList<Token>(_arena, initialCapacity: 4);
         for (int i = 0; i < 4; i++)
         {
-            list.Add(new Token(TokenKind.Identifier, i, 1, 1, i + 1));
+            list.Add(new Token(TokenKind.Identifier, i, 1));
         }
 
         var span = list.AsSpan();
@@ -88,7 +86,7 @@ public class ArenaListTests : IDisposable
 
         for (int i = 0; i < total; i++)
         {
-            list.Add(new Token(TokenKind.Number, i, 1, 1, i));
+            list.Add(new Token(TokenKind.Number, i, 1));
         }
 
         var span = list.AsSpan();

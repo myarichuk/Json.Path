@@ -85,7 +85,7 @@ public class NumberScanner: ISubScanner
 
         if (scanned > 0 && hasDigits)
         {
-            token = new Token(TokenKind.Number, ctx.Position, scanned, ctx.Line, ctx.Column);
+            token = new Token(TokenKind.Number, ctx.Position, scanned);
             ctx.Consume(scanned);
             return true;
         }

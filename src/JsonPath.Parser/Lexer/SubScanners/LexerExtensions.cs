@@ -1,5 +1,3 @@
-using System.Buffers;
-
 namespace JsonPath.Parser.Lexer;
 
 public static class LexerExtensions
@@ -20,14 +18,10 @@ public static class LexerExtensions
             return false;
         }
 
-        var ctxProjection = ctx.Project(ctx.Position + offset);
-
         token = new Token(
             TokenKind.Unknown,
             start,
-            literal.Length,
-            ctxProjection.Line,
-            ctxProjection.Column);
+            literal.Length);
         return true;
     }
 
@@ -81,14 +75,10 @@ public static class LexerExtensions
         }
 
         var tokenLength = matchIndex - start;
-        var ctxProjection = ctx.Project(ctx.Position + offset);
-
         token = new Token(
             TokenKind.Unknown,
             start,
-            tokenLength,
-            ctxProjection.Line,
-            ctxProjection.Column);
+            tokenLength);
 
         return true;
     }

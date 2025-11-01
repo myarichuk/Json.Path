@@ -24,9 +24,7 @@ public class StringScanner: ISubScanner
             token = new Token(
                 TokenKind.String,
                 ctx.Position + 1,
-                0,
-                ctx.Line,
-                ctx.Column);
+                0);
 
             var hasSingleQuotes = ctx.Current == '\'' &&
                                   ctx.Peek() == '\'';
@@ -102,9 +100,7 @@ public class StringScanner: ISubScanner
         token = new Token(
             TokenKind.String,
             ctx.Position + 1,
-            scanned - 1,
-            ctx.Line,
-            ctx.Column);
+            scanned - 1);
 
         ctx.Consume(token.Length + 2);
         return true;
