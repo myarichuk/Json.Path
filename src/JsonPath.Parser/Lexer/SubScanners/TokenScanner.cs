@@ -10,7 +10,7 @@ public class TokenScanner(string literal, TokenKind kind) : ISubScanner
         if (ctx.RemainingLength >= literal.Length &&
             ctx.Input.Slice(ctx.Position, literal.Length).SequenceEqual(literal))
         {
-            token = new Token(kind, ctx.Position, literal.Length, ctx.Line, ctx.Column);
+            token = new Token(kind, ctx.Position, literal.Length);
             ctx.Consume(literal.Length);
 
             return true;

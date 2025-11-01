@@ -26,6 +26,10 @@ public class IdentifierScanner: ISubScanner
             scanned++;
         }
 
-        return false;
+        var tokenLength = scanned + 1;
+        token = new Token(TokenKind.Identifier, ctx.Position, tokenLength);
+        ctx.Consume(tokenLength);
+
+        return true;
     }
 }
