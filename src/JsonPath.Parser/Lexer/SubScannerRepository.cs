@@ -2,6 +2,9 @@ using System.Collections;
 
 namespace JsonPath.Parser.Lexer;
 
+/// <summary>
+/// Provides the ordered set of sub-scanners that the <see cref="Scanner"/> consults.
+/// </summary>
 public class SubScannerRepository: IEnumerable<ISubScanner>
 {
     private static readonly List<ISubScanner> TokenScanners;

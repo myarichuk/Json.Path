@@ -2,12 +2,16 @@ using System.Runtime.CompilerServices;
 
 namespace JsonPath.Parser.Lexer;
 
+/// <summary>
+/// Handles quoted string literals, supporting escaped delimiters.
+/// </summary>
 public class StringScanner: ISubScanner
 {
     private const string EscapedDoubleQuote = "\\\"";
     private const string EscapedSingleQuote = "\\'";
     private static readonly string[] EscapeCharacters = [EscapedDoubleQuote];
 
+    /// <inheritdoc />
     public bool TryScan(ref ScanContext ctx, out Token token)
     {
         token = default;

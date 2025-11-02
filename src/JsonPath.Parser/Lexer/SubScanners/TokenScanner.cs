@@ -2,9 +2,13 @@ using System.Runtime.CompilerServices;
 
 namespace JsonPath.Parser.Lexer;
 
+/// <summary>
+/// Matches fixed literal tokens (operators, punctuation, keywords).
+/// </summary>
 public class TokenScanner(string literal, TokenKind kind) : ISubScanner
 {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    /// <inheritdoc />
     public bool TryScan(ref ScanContext ctx, out Token token)
     {
         if (ctx.RemainingLength >= literal.Length &&
