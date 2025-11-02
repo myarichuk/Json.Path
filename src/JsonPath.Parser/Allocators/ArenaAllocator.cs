@@ -76,8 +76,10 @@ public unsafe class ArenaAllocator : IDisposable
     private readonly NativeAllocatorBackend _backend;
     private bool _disposed;
 
-    public ArenaAllocator(nuint initialSize = (nuint)(64 * 1024), nuint maxSize = (nuint)(256 * 1024 * 1024),
-                          NativeAllocatorBackend backend = NativeAllocatorBackend.DotNetUnmanaged)
+    public ArenaAllocator(
+        nuint initialSize = (nuint)(64 * 1024),
+        nuint maxSize = (nuint)(256 * 1024 * 1024),
+        NativeAllocatorBackend backend = NativeAllocatorBackend.PlatformInvoke)
     {
         _maxSegmentSize = maxSize;
         _backend = backend;

@@ -17,7 +17,33 @@ public readonly struct Scanner(
         tokens = new ArenaList<Token>(allocator);
         errors = new ArenaList<JsonPathError>(allocator);
 
-        // note: the lexer is WIP and not supposed to work yet
-        throw new NotImplementedException();
+        while (ctx.RemainingLength > 0)
+        {
+            var success = false;
+            foreach (var scanner in subScanners)
+            {
+                if (scanner.TryScan(ref ctx, out Token token))
+                {
+                    success = true;
+                    tokens.Add(token);
+                    break;
+                }
+            }
+
+            if (!success)
+            {
+                errors.Add(new JsonPathError(
+                    DiagnosticPhase.Lexer,
+                    "scanner",
+                    "Couldn't recognize next token",
+                    new SourceSpan(
+                        ctx.Position,
+                        ctx.RemainingLength),
+                    allocator));
+                break;
+            }
+        }
+
+        return errors.IsEmpty;
     }
 }

@@ -1,7 +1,7 @@
 using JsonPath.Parser.Lexer;
 using Xunit;
 
-namespace JsonPath.Tests.Lexer;
+namespace Json.Path.Tests.Lexing;
 
 public class StringScannerTests
 {

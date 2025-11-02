@@ -18,8 +18,6 @@ public unsafe struct ArenaList<T>(in ArenaAllocator arena, nuint initialCapacity
     private nuint _capacity = initialCapacity;
     private readonly ArenaAllocator _arena = arena;
 
-    public nuint Count => _count;
-
     public bool IsEmpty => _count == 0;
 
     public ref T this[nuint index] => ref _base[index];

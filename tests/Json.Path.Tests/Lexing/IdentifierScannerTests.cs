@@ -7,23 +7,30 @@ namespace Json.Path.Tests.Lexing;
 public class IdentifierScannerTests
 {
     [Theory]
-    [InlineData("foo", "foo")]
-    [InlineData("_bar", "_bar")]
-    [InlineData("alpha123", "alpha123")]
-    [InlineData("name_with_underscores", "name_with_underscores")]
-    public void Should_Scan_ValidIdentifier(string input, string expected)
+    [InlineData("foo", 0, "foo")]
+    [InlineData("_bar", 0, "_bar")]
+    [InlineData("alpha123", 0, "alpha123")]
+    [InlineData("alpha123", 2, "pha123")]
+    [InlineData("name_with_underscores", 0, "name_with_underscores")]
+    [InlineData("name_with_underscores", 3, "e_with_underscores")]
+
+    public void Should_Scan_ValidIdentifier(string input, int preConsume, string expected)
     {
         var ctx = new ScanContext(input.AsSpan());
         var scanner = new IdentifierScanner();
+        if (preConsume > 0)
+        {
+            ctx.Consume(preConsume);
+        }
 
         var result = scanner.TryScan(ref ctx, out var token);
 
         Assert.True(result);
         Assert.Equal(TokenKind.Identifier, token.Kind);
-        Assert.Equal(0, token.Start);
+        Assert.Equal(preConsume, token.Start);
         Assert.Equal(expected.Length, token.Length);
-        Assert.Equal(expected, new string(token.Slice(input)));
-        Assert.Equal(expected.Length, ctx.Position);
+        Assert.Equal(expected, ctx.SliceFrom(token));
+        Assert.Equal(expected.Length, ctx.Position - preConsume);
     }
 
     [Fact]
@@ -43,9 +50,9 @@ public class IdentifierScannerTests
     }
 
     [Theory]
-    [InlineData("1alpha")]
+    [InlineData("1foobar")]
     [InlineData("-invalid")]
-    [InlineData("\u2603snowman")]
+    [InlineData("\u2603foobar")]
     [InlineData("")]
     public void Should_Reject_WhenFirstCharInvalid(string input)
     {

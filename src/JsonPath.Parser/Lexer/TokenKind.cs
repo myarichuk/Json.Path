@@ -19,8 +19,6 @@ namespace JsonPath.Parser.Lexer
     {
         Unknown,
 
-        Eof,
-
         Identifier,
 
         Number,

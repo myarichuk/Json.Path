@@ -18,9 +18,11 @@ public class SubScannerRepository: IEnumerable<ISubScanner>
             TokenScanners.Add(new TokenScanner(literal, kind));
         }
 
+        // I know, hardcoded is meh but no reason to do fancy reflection
+        // (I mean, there is only so many of those :) )
         TokenScanners.Add(new StringScanner());
-        
-        //TODO: don't forget to add other token scanners like one for identifiers
+        TokenScanners.Add(new IdentifierScanner());
+        TokenScanners.Add(new NumberScanner());
     }
 
     public IEnumerator<ISubScanner> GetEnumerator() =>
