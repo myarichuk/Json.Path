@@ -1,7 +1,11 @@
 namespace JsonPath.Parser.Lexer;
 
+/// <summary>
+/// Parses integer and floating point literals, including optional exponent parts.
+/// </summary>
 public class NumberScanner: ISubScanner
 {
+    /// <inheritdoc />
     public bool TryScan(ref ScanContext ctx, out Token token)
     {
         token = default;

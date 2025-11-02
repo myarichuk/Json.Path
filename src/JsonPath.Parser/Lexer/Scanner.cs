@@ -3,10 +3,22 @@ using JsonPath.Parser.Diagnostics;
 
 namespace JsonPath.Parser.Lexer;
 
+/// <summary>
+/// Provides the high level orchestration logic for lexing JsonPath expressions.
+/// </summary>
+/// <param name="allocator">Arena allocator used to back the token and error collections.</param>
+/// <param name="subScanners">Repository containing the concrete sub-scanners.</param>
 public readonly struct Scanner(
     ArenaAllocator allocator,
     SubScannerRepository subScanners)
 {
+    /// <summary>
+    /// Attempts to tokenize the provided input.
+    /// </summary>
+    /// <param name="input">The source characters to scan.</param>
+    /// <param name="tokens">The token list produced by the scan.</param>
+    /// <param name="errors">Collection populated with lexer diagnostics, if any.</param>
+    /// <returns><see langword="true"/> when the entire input is tokenized without errors; otherwise, <see langword="false"/>.</returns>
     public bool TryScan(
         ReadOnlySpan<char> input,
         out ArenaList<Token> tokens,
@@ -19,6 +31,12 @@ public readonly struct Scanner(
 
         while (ctx.RemainingLength > 0)
         {
+            if (char.IsWhiteSpace(ctx.Current))
+            {
+                ctx.Consume();
+                continue;
+            }
+
             var success = false;
             foreach (var scanner in subScanners)
             {
