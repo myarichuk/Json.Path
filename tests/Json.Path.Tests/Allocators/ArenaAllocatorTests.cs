@@ -32,6 +32,18 @@ public unsafe class ArenaAllocatorTests : IDisposable
         Assert.True((nuint)(b - a) >= 64);
     }
 
+    [Theory]
+    [InlineData(32u)]
+    [InlineData(64u)]
+    public void Alloc_WithAlignment_ShouldReturnAlignedPointer(uint align)
+    {
+        var alignment = (nuint)align;
+        var ptr = _arena.Alloc(16, alignment);
+
+        Assert.NotEqual(IntPtr.Zero, (nint)ptr);
+        Assert.True(((nuint)ptr & (alignment - 1)) == 0, "Pointer should respect requested alignment.");
+    }
+
     [Fact]
     public void Alloc_LargeAllocation_ShouldTriggerNewSegment()
     {

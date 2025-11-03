@@ -22,6 +22,13 @@ public unsafe struct ArenaSegment
     public nuint Size;
     public ArenaSegment* Next;
 
+    /// <summary>
+    /// Attempts to allocate a block respecting the requested alignment within this segment.
+    /// </summary>
+    /// <param name="size">The number of bytes to reserve from the segment.</param>
+    /// <param name="align">The required power-of-two alignment for the allocation.</param>
+    /// <param name="ptr">When successful, receives the aligned address of the allocated block.</param>
+    /// <returns><see langword="true"/> when the allocation fits within the remaining segment space.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool TryAlloc(nuint size, nuint align, out void* ptr)
     {
@@ -32,18 +39,19 @@ public unsafe struct ArenaSegment
 
         Debug.Assert((align & (align - 1)) == 0, "align must be a power of two");
 
-        // round up
-        var aligned = (Offset + (align - 1)) & ~(align - 1);
+        var current = (nuint)Base + Offset;
+        var aligned = (current + (align - 1)) & ~(align - 1);
+        var newOffset = aligned - (nuint)Base;
 
-        // overflow-safe bound check: aligned <= Size - size
-        if (size > Size || aligned > Size - size)
+        // overflow-safe bound check: newOffset <= Size - size
+        if (size > Size || newOffset > Size - size)
         {
             ptr = null;
             return false;
         }
 
-        ptr = Base + aligned;
-        Offset = aligned + size;
+        ptr = (void*)aligned;
+        Offset = newOffset + size;
         return true;
     }
 }
