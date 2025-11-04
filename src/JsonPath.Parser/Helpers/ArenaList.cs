@@ -1,24 +1,31 @@
 using System.Runtime.CompilerServices;
-using JsonPath.Parser.Allocators;
 
-namespace JsonPath.Parser;
+namespace JsonPath.Parser.Helpers;
 
 /// <summary>
 /// A simple, arena-backed continuous list for unmanaged structs.
 /// </summary>
-public unsafe struct ArenaList<T>(in ArenaAllocator arena, nuint initialCapacity = 16)
+public unsafe struct ArenaList<T>(in ArenaAllocator arena, int initialCapacity = 16)
     where T : unmanaged
 {
     private T* _base =
         (T*)arena.Alloc(
-            initialCapacity * (nuint)sizeof(T),
+            (nuint)initialCapacity * (nuint)sizeof(T),
             align: (nuint)IntPtr.Size);
 
-    private nuint _count = 0;
-    private nuint _capacity = initialCapacity;
+    private int _count = 0;
+    private int _capacity = initialCapacity;
     private readonly ArenaAllocator _arena = arena;
 
     public bool IsEmpty => _count == 0;
+
+    public int Length
+    {
+        get => _count;
+        set => _count = value;
+    }
+
+    public ref T this[int index] => ref _base[index];
 
     public ref T this[nuint index] => ref _base[index];
 
@@ -37,7 +44,7 @@ public unsafe struct ArenaList<T>(in ArenaAllocator arena, nuint initialCapacity
 
     private void Grow()
     {
-        var newCap = _capacity * 2;
+        var newCap = (nuint)_capacity * 2;
         var newPtr = (T*)_arena.Alloc(newCap * (nuint)sizeof(T));
         Buffer.MemoryCopy(
             _base,
@@ -46,6 +53,6 @@ public unsafe struct ArenaList<T>(in ArenaAllocator arena, nuint initialCapacity
             (long)_count * sizeof(T));
 
         _base = newPtr;
-        _capacity = newCap;
+        _capacity = (int)newCap;
     }
 }

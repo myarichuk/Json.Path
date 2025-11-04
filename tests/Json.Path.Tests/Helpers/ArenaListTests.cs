@@ -1,9 +1,9 @@
 using JsonPath.Parser;
-using JsonPath.Parser.Allocators;
+using JsonPath.Parser.Helpers;
 using JsonPath.Parser.Lexer;
 using Xunit;
 
-namespace Json.Path.Tests.Lexing;
+namespace Json.Path.Tests.Helpers;
 
 public class ArenaListTests : IDisposable
 {

@@ -1,5 +1,4 @@
 using JsonPath.Parser;
-using JsonPath.Parser.Allocators;
 using JsonPath.Parser.Diagnostics;
 using JsonPath.Parser.Lexer;
 using Xunit;
@@ -95,7 +94,7 @@ public class ScannerTests
         }
 
         Assert.True(foundString, "Expected to locate string literal token");
-        Assert.Equal("fiction", stringToken.Slice(input));
+        Assert.Equal("fiction", stringToken.SliceFrom(input));
     }
 
     [Fact]

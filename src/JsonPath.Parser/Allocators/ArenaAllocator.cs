@@ -67,7 +67,7 @@ using JsonPath.Parser.Allocators;
  */
 public unsafe class ArenaAllocator : IDisposable
 {
-    private static readonly nuint DefaultInitialSegmentSize = (nuint)(64 * 1024);
+    private static readonly nuint DefaultInitialSegmentSize = 64 * 1024;
     private static readonly nuint DefaultPageSize = (nuint)Environment.SystemPageSize;
 
     private ArenaSegment* _first;
@@ -77,8 +77,8 @@ public unsafe class ArenaAllocator : IDisposable
     private bool _disposed;
 
     public ArenaAllocator(
-        nuint initialSize = (nuint)(64 * 1024),
-        nuint maxSize = (nuint)(256 * 1024 * 1024),
+        nuint initialSize = 64 * 1024,
+        nuint maxSize = 256 * 1024 * 1024,
         NativeAllocatorBackend backend = NativeAllocatorBackend.PlatformInvoke)
     {
         _maxSegmentSize = maxSize;
@@ -190,7 +190,10 @@ public unsafe class ArenaAllocator : IDisposable
     public void Reset()
     {
         for (var seg = _first; seg != null; seg = seg->Next)
+        {
             seg->Offset = 0;
+        }
+
         _current = _first;
     }
 

@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using JsonPath.Parser.Allocators;
+using JsonPath.Parser.Helpers;
 
 namespace JsonPath.Parser.Diagnostics;
 

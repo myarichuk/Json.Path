@@ -45,7 +45,7 @@ public class IdentifierScannerTests
         Assert.True(result);
         Assert.Equal(0, token.Start);
         Assert.Equal(3, token.Length);
-        Assert.Equal("foo", new string(token.Slice(input)));
+        Assert.Equal("foo", new string(token.SliceFrom(input)));
         Assert.Equal(3, ctx.Position);
     }
 

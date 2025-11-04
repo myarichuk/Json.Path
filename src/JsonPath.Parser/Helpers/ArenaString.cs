@@ -1,8 +1,8 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using JsonPath.Parser.Allocators;
+// ReSharper disable MemberCanBePrivate.Global
 
-namespace JsonPath.Parser;
+namespace JsonPath.Parser.Helpers;
 
 
 /// <summary>
@@ -12,10 +12,16 @@ namespace JsonPath.Parser;
 public readonly unsafe struct ArenaString(char* ptr, int len)
 {
     public int Length => len;
+
     public bool IsEmpty => len == 0 || ptr == null;
 
+    // ReSharper disable once MemberCanBePrivate.Global
     public ReadOnlySpan<char> AsSpan() => new(ptr, len);
 
+    /// <summary>
+    /// Allocate and fetch managed string representation
+    /// </summary>
+    /// <returns>copy of the content</returns>
     public override string ToString() =>
         ptr is null ? string.Empty : new string(ptr, 0, len);
 
@@ -35,6 +41,14 @@ public readonly unsafe struct ArenaString(char* ptr, int len)
         src.CopyTo(new Span<char>(dest, src.Length));
         return new ArenaString(dest, src.Length);
     }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool Equals(ReadOnlySpan<char> other) =>
+        AsSpan().SequenceEqual(other);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool Equals(ArenaString other) =>
+        Equals(other.AsSpan());
 
     public ArenaString Slice(int start, int length) =>
         new(ptr + start, length);

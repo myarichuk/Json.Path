@@ -58,7 +58,7 @@ public static unsafe class NativeAllocator
     }
 #endif
 
-    [StructLayout(LayoutKind.Sequential)]
+    [StructLayout(LayoutKind.Sequential, Pack = 8)]
     private struct AllocationHeader
     {
         public ulong Magic;

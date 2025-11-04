@@ -13,6 +13,6 @@ public readonly struct Token(TokenKind kind, int start, int length)
     public readonly int Start = start;
     public readonly int Length = length;
 
-    public ReadOnlySpan<char> Slice(ReadOnlySpan<char> input) =>
+    public ReadOnlySpan<char> SliceFrom(ReadOnlySpan<char> input) =>
         input.Slice(Start, Length);
 }

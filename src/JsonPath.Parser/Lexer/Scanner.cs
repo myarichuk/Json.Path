@@ -1,17 +1,30 @@
 using JsonPath.Parser.Allocators;
 using JsonPath.Parser.Diagnostics;
+using JsonPath.Parser.Helpers;
 
 namespace JsonPath.Parser.Lexer;
 
 /// <summary>
 /// Provides the high level orchestration logic for lexing JsonPath expressions.
 /// </summary>
-/// <param name="allocator">Arena allocator used to back the token and error collections.</param>
-/// <param name="subScanners">Repository containing the concrete sub-scanners.</param>
-public readonly struct Scanner(
-    ArenaAllocator allocator,
-    SubScannerRepository subScanners)
+public readonly struct Scanner
 {
+    private readonly ArenaAllocator _allocator;
+    private readonly SubScannerRepository _subScanners;
+
+    /// <summary>
+    /// Provides the high level orchestration logic for lexing JsonPath expressions.
+    /// </summary>
+    /// <param name="allocator">Arena allocator used to back the token and error collections.</param>
+    /// <param name="subScanners">Repository containing the concrete sub-scanners.</param>
+    public Scanner(
+        in ArenaAllocator allocator,
+        SubScannerRepository subScanners)
+    {
+        _allocator = allocator;
+        _subScanners = subScanners;
+    }
+
     /// <summary>
     /// Attempts to tokenize the provided input.
     /// </summary>
@@ -26,8 +39,8 @@ public readonly struct Scanner(
     {
         var ctx = new ScanContext(input);
 
-        tokens = new ArenaList<Token>(allocator);
-        errors = new ArenaList<JsonPathError>(allocator);
+        tokens = new ArenaList<Token>(_allocator);
+        errors = new ArenaList<JsonPathError>(_allocator);
 
         while (ctx.RemainingLength > 0)
         {
@@ -38,7 +51,7 @@ public readonly struct Scanner(
             }
 
             var success = false;
-            foreach (var scanner in subScanners)
+            foreach (var scanner in _subScanners)
             {
                 if (scanner.TryScan(ref ctx, out Token token))
                 {
@@ -57,7 +70,7 @@ public readonly struct Scanner(
                     new SourceSpan(
                         ctx.Position,
                         ctx.RemainingLength),
-                    allocator));
+                    _allocator));
                 break;
             }
         }
