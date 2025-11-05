@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 
 namespace JsonPath.Parser.Helpers;
+
 public unsafe struct ArenaStack<T>(in ArenaAllocator arena, int initialCapacity = 16)
     where T : unmanaged
 {

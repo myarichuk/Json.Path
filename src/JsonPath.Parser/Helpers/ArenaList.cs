@@ -42,6 +42,9 @@ public unsafe struct ArenaList<T>(in ArenaAllocator arena, int initialCapacity =
         _base[_count++] = value;
     }
 
+    public void Reset() =>
+        _count = 0; // no need to delete stuff, just assume we are empty!
+
     private void Grow()
     {
         var newCap = (nuint)_capacity * 2;
