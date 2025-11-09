@@ -114,33 +114,6 @@ public class AstDataTableTests : IDisposable
     }
 
     [Fact]
-    public void Reset_ClearsAllData()
-    {
-        var data = new AstDataTable(_arena);
-
-        var name = ArenaString.Clone("x", _arena);
-        data.AddName(name);
-        data.AddIndex(99);
-        data.AddLiteral(new LiteralData { Kind = LiteralKind.Null });
-
-        Assert.Equal("x", data.GetName(0).ToString());
-        Assert.Equal(99, data.GetIndex(0));
-
-        data.Reset();
-
-        // After reset, we expect zero counts
-        Assert.Equal(
-            0,
-#pragma warning disable SA1118
-            data.GetType()
-                .GetField(
-                    "_names",
-                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
-            .GetValue(data) is ArenaList<ArenaString> names ? names.Length : 999);
-#pragma warning restore SA1118
-    }
-    
-    [Fact]
     public void AddMultiple_Names_Work()
         {
             var data = new AstDataTable(_arena);

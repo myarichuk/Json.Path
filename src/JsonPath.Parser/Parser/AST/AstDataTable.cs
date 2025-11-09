@@ -1,27 +1,16 @@
-using System;
 using System.Runtime.CompilerServices;
 using JsonPath.Parser.Helpers;
 
 namespace JsonPath.Parser;
 
-public unsafe struct AstDataTable
+public struct AstDataTable(ArenaAllocator arena)
 {
-    private ArenaList<ArenaString> _names;
-    private ArenaList<LiteralData> _literals;
-    private ArenaList<long> _indices;
-    private ArenaList<SliceData> _slices;
-    private ArenaList<FunctionCallData> _functions;
-    private readonly ArenaAllocator _arena;
-
-    public AstDataTable(ArenaAllocator arena)
-    {
-        _arena = arena;
-        _names = new ArenaList<ArenaString>(arena);
-        _literals = new ArenaList<LiteralData>(arena);
-        _indices = new ArenaList<long>(arena);
-        _slices = new ArenaList<SliceData>(arena);
-        _functions = new ArenaList<FunctionCallData>(arena);
-    }
+    private ArenaList<ArenaString> _names = new(arena);
+    private ArenaList<LiteralData> _literals = new(arena);
+    private ArenaList<long> _indices = new(arena);
+    private ArenaList<SliceData> _slices = new(arena);
+    private ArenaList<FunctionCallData> _functions = new(arena);
+    private readonly ArenaAllocator _arena = arena;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public uint AddName(in ArenaString name)
@@ -64,19 +53,19 @@ public unsafe struct AstDataTable
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public ArenaString GetName(uint index) => _names[(int)index];
+    public readonly ref ArenaString GetName(uint index) => ref _names[(int)index];
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public LiteralData GetLiteral(uint index) => _literals[(int)index];
+    public readonly ref LiteralData GetLiteral(uint index) => ref _literals[(int)index];
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public long GetIndex(uint index) => _indices[(int)index];
+    public readonly ref long GetIndex(uint index) => ref _indices[(int)index];
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public SliceData GetSlice(uint index) => _slices[(int)index];
+    public readonly ref SliceData GetSlice(uint index) => ref _slices[(int)index];
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public FunctionCallData GetFunction(uint index) => _functions[(int)index];
+    public readonly ref FunctionCallData GetFunction(uint index) => ref _functions[(int)index];
 
     public void Reset()
     {

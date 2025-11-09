@@ -1,9 +1,8 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+
 // ReSharper disable MemberCanBePrivate.Global
-
 namespace JsonPath.Parser.Helpers;
-
 
 /// <summary>
 /// A non-owning view of UTF-16 text stored in unmanaged (arena) memory.
@@ -11,23 +10,23 @@ namespace JsonPath.Parser.Helpers;
 [StructLayout(LayoutKind.Sequential)]
 public readonly unsafe struct ArenaString(char* ptr, int len)
 {
-    public int Length => len;
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool operator ==(ArenaString left, ArenaString right) => left.Equals(right);
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool operator !=(ArenaString left, ArenaString right) => !left.Equals(right);
+
+    public static implicit operator ReadOnlySpan<char>(ArenaString s) => s.AsSpan();
+
+    public int Length => len;
     public bool IsEmpty => len == 0 || ptr == null;
 
-    // ReSharper disable once MemberCanBePrivate.Global
-    public ReadOnlySpan<char> AsSpan() => new(ptr, len);
+    public ReadOnlySpan<char> AsSpan() =>
+        ptr == null ? ReadOnlySpan<char>.Empty : new ReadOnlySpan<char>(ptr, len);
 
-    /// <summary>
-    /// Allocate and fetch managed string representation
-    /// </summary>
-    /// <returns>copy of the content</returns>
     public override string ToString() =>
-        ptr is null ? string.Empty : new string(ptr, 0, len);
+        ptr == null ? string.Empty : new string(ptr, 0, len);
 
-    /// <summary>
-    /// Allocates unmanaged memory in the given arena and copies the text into it.
-    /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ArenaString Clone(ReadOnlySpan<char> src, ArenaAllocator arena)
     {
@@ -44,14 +43,28 @@ public readonly unsafe struct ArenaString(char* ptr, int len)
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool Equals(ReadOnlySpan<char> other) =>
-        AsSpan().SequenceEqual(other);
+        len == other.Length && AsSpan().SequenceEqual(other);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool Equals(ArenaString other) =>
         Equals(other.AsSpan());
 
-    public ArenaString Slice(int start, int length) =>
-        new(ptr + start, length);
+    public override bool Equals(object? obj) =>
+        obj is ArenaString s && Equals(s);
 
-    public static implicit operator ReadOnlySpan<char>(ArenaString s) => s.AsSpan();
+    public override int GetHashCode() => HashCode.Combine((nint)ptr, len);
+
+  
+    public ArenaString Slice(int start, int length)
+    {
+        #if DEBUG
+        // TODO: consider removing DEBUG clause here
+        if (start < 0 || length < 0 || start + length > len)
+        {
+            throw new ArgumentOutOfRangeException();
+        }
+        #endif
+
+        return new ArenaString(ptr + start, length);
+    }
 }

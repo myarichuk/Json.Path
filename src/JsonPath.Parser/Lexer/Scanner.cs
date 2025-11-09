@@ -7,7 +7,7 @@ namespace JsonPath.Parser.Lexer;
 /// <summary>
 /// Provides the high level orchestration logic for lexing JsonPath expressions.
 /// </summary>
-public readonly struct Scanner
+public readonly ref struct Scanner
 {
     private readonly ArenaAllocator _allocator;
     private readonly SubScannerRepository _subScanners;

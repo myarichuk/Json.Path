@@ -2,12 +2,16 @@ using JsonPath.Parser.Helpers;
 
 namespace JsonPath.Parser;
 
-public unsafe struct AstBuilder
+public unsafe ref struct AstBuilder
 {
     private readonly ArenaAllocator _allocator;
     private readonly AstNode* _root;
     private ArenaStack<AstNode> _stack;
-
+    
+    /// <summary>
+    /// Initializes a new instance of the <see cref="AstBuilder"/> struct.
+    /// </summary>
+    /// <param name="allocator">bump-allocator instance</param>
     public AstBuilder(in ArenaAllocator allocator)
     {
         _allocator = allocator;
@@ -15,6 +19,8 @@ public unsafe struct AstBuilder
 
         _root = AllocNode(AstKind.RootIdentifier);
     }
+
+    public AstNode* Root => _root;
 
     private AstNode* AllocNode(AstKind kind)
     {
@@ -26,7 +32,7 @@ public unsafe struct AstBuilder
         return node;
     }
 
-    public AstHandle AddChild<TData>(AstKind kind, TData data)
+    public AstHandle AddChild<TData>(AstKind kind)
         where TData : unmanaged
     {
         var parent = _stack.Peek(); // current parent

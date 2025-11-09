@@ -21,7 +21,9 @@ public unsafe struct ArenaStack<T>(in ArenaAllocator arena, int initialCapacity 
     public void Push(T* value)
     {
         if (_count >= _capacity)
+        {
             Grow();
+        }
 
         _base[_count++] = value;
     }
@@ -30,7 +32,9 @@ public unsafe struct ArenaStack<T>(in ArenaAllocator arena, int initialCapacity 
     public T* Pop()
     {
         if (_count == 0)
+        {
             throw new InvalidOperationException("ArenaStack underflow");
+        }
 
         return _base[--_count];
     }
@@ -39,7 +43,9 @@ public unsafe struct ArenaStack<T>(in ArenaAllocator arena, int initialCapacity 
     public T* Peek()
     {
         if (_count == 0)
+        {
             throw new InvalidOperationException("ArenaStack empty");
+        }
 
         return _base[_count - 1];
     }
