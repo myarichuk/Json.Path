@@ -2,8 +2,9 @@ using System;
 using Xunit;
 using JsonPath.Parser;
 using JsonPath.Parser.Helpers;
+using JsonPath.Parser.Lexer;
 
-namespace JsonPath.Tests;
+namespace Json.Path.Tests;
 
 public unsafe class AstContextTests : IDisposable
 {
@@ -86,12 +87,14 @@ public unsafe class AstContextTests : IDisposable
         var writer = new AstWriteContext(_allocator);
         var reader = default(AstReadContext);
 
-        var fn = new FunctionCallData
+        var fn = FunctionCallData.From("length", _allocator);
+        fn.Args->Add(new FunctionArgument
         {
-            ArgCount = 1,
-            FirstArgIndex = 0,
-            Name = ArenaString.Clone("length", _allocator),
-        };
+            ArgName = ArenaString.Clone("foo", _allocator),
+            Kind = TokenKind.False,
+            Value = null,
+        });
+
         var node = writer.CreateNode(ref data, AstKind.FunctionCall, fn);
         var readBack = reader.GetData<FunctionCallData>(ref data, node);
 

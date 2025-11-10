@@ -1,5 +1,6 @@
 using JsonPath.Parser;
 using JsonPath.Parser.Helpers;
+using JsonPath.Parser.Lexer;
 using Xunit;
 
 namespace Json.Path.Tests.Parsing;
@@ -60,24 +61,23 @@ public class AstDataTableTests : IDisposable
     }
 
     [Fact]
-    public void AddAndRetrieve_FunctionCall_Works()
+    public unsafe void AddAndRetrieve_FunctionCall_Works()
     {
         var data = new AstDataTable(_arena);
 
-        var fnName = ArenaString.Clone("length", _arena);
-        var fn = new FunctionCallData
+        var fn = FunctionCallData.From("length", _arena);
+        fn.Args->Add(new FunctionArgument
         {
-            Name = fnName,
-            FirstArgIndex = 0,
-            ArgCount = 1
-        };
+            ArgName = ArenaString.Clone("foo", _arena),
+            Kind = TokenKind.False,
+            Value = null,
+        });
 
         var idx = data.AddFunction(fn);
         var retrieved = data.GetFunction(idx);
 
         Assert.Equal("length", retrieved.Name.ToString());
-        Assert.Equal((uint)0, retrieved.FirstArgIndex);
-        Assert.Equal((ushort)1, retrieved.ArgCount);
+        Assert.Equal((ushort)1, retrieved.Args->Length);
     }
 
     [Fact]
@@ -193,12 +193,26 @@ public class AstDataTableTests : IDisposable
         }
 
     [Fact]
-    public void AddMultiple_Functions_Work()
+    public unsafe void AddMultiple_Functions_Work()
         {
             var data = new AstDataTable(_arena);
 
-            var fnA = new FunctionCallData { Name = ArenaString.Clone("length", _arena), ArgCount = 1, FirstArgIndex = 10 };
-            var fnB = new FunctionCallData { Name = ArenaString.Clone("sum", _arena), ArgCount = 2, FirstArgIndex = 20 };
+            var fnA = FunctionCallData.From("length", _arena);
+            var fnB = FunctionCallData.From("sum", _arena);
+
+            fnA.Args->Add(new FunctionArgument
+            {
+                ArgName = ArenaString.Clone("count", _arena),
+            });
+
+            fnB.Args->Add(new FunctionArgument
+            {
+                ArgName = ArenaString.Clone("a", _arena),
+            });
+            fnB.Args->Add(new FunctionArgument
+            {
+                ArgName = ArenaString.Clone("b", _arena),
+            });
 
             var idxA = data.AddFunction(fnA);
             var idxB = data.AddFunction(fnB);
@@ -212,18 +226,24 @@ public class AstDataTableTests : IDisposable
             Assert.Equal("length", f1.Name.ToString());
             Assert.Equal("sum", f2.Name.ToString());
 
-            Assert.Equal((ushort)1, f1.ArgCount);
-            Assert.Equal((ushort)2, f2.ArgCount);
+            Assert.Equal((ushort)1, f1.Args->Length);
+            Assert.Equal((ushort)2, f2.Args->Length);
         }
 
     [Fact]
-    public void AddingDifferentTypes_DoesNotInterfere()
+    public unsafe void AddingDifferentTypes_DoesNotInterfere()
         {
             var data = new AstDataTable(_arena);
 
             var nameIdx = data.AddName(ArenaString.Clone("prop", _arena));
             var litIdx = data.AddLiteral(new LiteralData { Kind = LiteralKind.Number, Number = 99 });
-            var fnIdx = data.AddFunction(new FunctionCallData { Name = ArenaString.Clone("exists", _arena), ArgCount = 1 });
+            var fn = FunctionCallData.From("exists", _arena);
+            var fnIdx = data.AddFunction(fn);
+
+            fn.Args->Add(new FunctionArgument
+            {
+                ArgName = ArenaString.Clone("item", _arena),
+            });
 
             Assert.Equal("prop", data.GetName(nameIdx).ToString());
             Assert.Equal("99", data.GetLiteral(litIdx).ToString());
@@ -247,5 +267,5 @@ public class AstDataTableTests : IDisposable
                 var name = data.GetName((uint)i).ToString();
                 Assert.Equal($"item{i}", name);
             }
-        }    
+        }
 }

@@ -3,7 +3,7 @@ namespace JsonPath.Parser.Lexer;
 /// <summary>
 /// Recognizes unquoted identifier segments (e.g. property names) in a JsonPath expression.
 /// </summary>
-public class IdentifierScanner: ISubScanner
+public class IdentifierScanner : ISubScanner
 {
     /// <inheritdoc />
     public bool TryScan(ref ScanContext ctx, out Token token)
