@@ -34,6 +34,7 @@ public readonly ref struct Scanner
     /// <returns><see langword="true"/> when the entire input is tokenized without errors; otherwise, <see langword="false"/>.</returns>
     public bool TryScan(
         ReadOnlySpan<char> input,
+        ref AstDataTable dataTable,
         out ArenaList<Token> tokens,
         out ArenaList<JsonPathError> errors)
     {

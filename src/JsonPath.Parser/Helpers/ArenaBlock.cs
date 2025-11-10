@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
@@ -45,7 +46,8 @@ public unsafe struct ArenaBlockList<T> : IEnumerable<T>
     {
         nuint headerSize = (nuint)sizeof(ArenaBlock<T>);
         nuint dataSize = capacity * (nuint)sizeof(T);
-        byte* mem = (byte*)arena.Alloc(headerSize + dataSize);
+
+        byte* mem = (byte*)arena.Alloc(headerSize + dataSize,  (nuint)Unsafe.SizeOf<T>());
         var block = (ArenaBlock<T>*)mem;
         block->Data = (T*)(mem + headerSize);
         block->Count = 0;

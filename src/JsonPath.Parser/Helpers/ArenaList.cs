@@ -1,14 +1,17 @@
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace JsonPath.Parser.Helpers;
 
 [StructLayout(LayoutKind.Sequential)]
-public struct ArenaListHeader
+public unsafe struct ArenaListHeader
 {
     public int Count;
     public int Capacity;
+    public void* Data;
 }
+
 
 /// <summary>
 /// A simple, arena-backed continuous list for unmanaged structs.
@@ -18,7 +21,6 @@ public unsafe struct ArenaList<T>
 {
     private readonly ArenaAllocator _arena; // class reference – fine
     private ArenaListHeader* _header;
-    private T* _data;
 
     public ArenaList(ArenaAllocator arena, int initialCapacity = 16)
     {
@@ -26,33 +28,51 @@ public unsafe struct ArenaList<T>
         _header = (ArenaListHeader*)arena.Alloc((nuint)sizeof(ArenaListHeader), align: (nuint)IntPtr.Size);
         _header->Count = 0;
         _header->Capacity = initialCapacity;
-        _data = (T*)arena.Alloc((nuint)initialCapacity * (nuint)sizeof(T));
+        _header->Data = (T*)arena.Alloc((nuint)initialCapacity * (nuint)sizeof(T));
     }
 
-    public ref T this[int index] => ref _data[index];
+    public ref T this[int index]
+    {
+        get
+        {
+            Debug.Assert(index >= 0 && (uint)index < (uint)_header->Count, "out of bounds for ArenaList indexer");
+            return ref ((T*)_header->Data)[index];
+        }
+    }
 
     public int Length => _header != null ? _header->Count : 0;
 
     public void Add(in T value)
     {
         if (_header->Count >= _header->Capacity)
+        {
             Grow();
+        }
 
-        _data[_header->Count++] = value;
+        ((T*)_header->Data)[_header->Count++] = value;
     }
 
     private void Grow()
     {
         var newCap = (nuint)_header->Capacity * 2;
-        var newPtr = (T*)_arena.Alloc(newCap * (nuint)sizeof(T));
-        Buffer.MemoryCopy(_data, newPtr, (long)newCap * sizeof(T), (long)_header->Count * sizeof(T));
-        _data = newPtr;
+        var newPtr = _arena.Alloc(newCap * (nuint)sizeof(T));
+        Unsafe.CopyBlockUnaligned(newPtr, _header->Data, (uint)(_header->Count * sizeof(T)));
+        _header->Data = newPtr;
         _header->Capacity = (int)newCap;
     }
 
     public bool IsEmpty => _header == null || _header->Count == 0;
     
-    public void Reset() => _header->Count = 0;
+    public void Reset()
+    {
+        // just in case :)
+        if (_header == null)
+        {
+            return;
+        }
 
-    public ReadOnlySpan<T> AsSpan() => new(_data, _header->Count);
+        _header->Count = 0;
+    }
+
+    public ReadOnlySpan<T> AsSpan() => new((T*)_header->Data, _header->Count);
 }

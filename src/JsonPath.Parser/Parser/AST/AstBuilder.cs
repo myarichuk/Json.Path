@@ -6,7 +6,7 @@ public unsafe ref struct AstBuilder
 {
     private readonly ArenaAllocator _allocator;
     private readonly AstNode* _root;
-    private ArenaStack<AstNode> _stack;
+    private ArenaPtrStack<AstNode> _ptrStack;
     
     /// <summary>
     /// Initializes a new instance of the <see cref="AstBuilder"/> struct.
@@ -15,7 +15,7 @@ public unsafe ref struct AstBuilder
     public AstBuilder(in ArenaAllocator allocator)
     {
         _allocator = allocator;
-        _stack = new ArenaStack<AstNode>(_allocator);
+        _ptrStack = new ArenaPtrStack<AstNode>(_allocator);
 
         _root = AllocNode(AstKind.RootIdentifier);
     }
@@ -35,7 +35,7 @@ public unsafe ref struct AstBuilder
     public AstHandle AddChild<TData>(AstKind kind)
         where TData : unmanaged
     {
-        var parent = _stack.Peek(); // current parent
+        var parent = _ptrStack.Peek(); // current parent
         var child = AllocNode(kind);
 
         if (parent->NextChild == null)
@@ -59,10 +59,10 @@ public unsafe ref struct AstBuilder
 
     public AstHandle AddSibling(AstKind kind)
     {
-        var current = _stack.Peek();
+        var current = _ptrStack.Peek();
         var sibling = AllocNode(kind);
         current->NextSibling = sibling;
-        _stack.Push(sibling); // move cursor
+        _ptrStack.Push(sibling); // move cursor
         return new AstHandle(sibling);
     }
 }

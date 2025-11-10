@@ -3,13 +3,13 @@ using Xunit;
 
 namespace Json.Path.Tests.Helpers;
 
-public unsafe class ArenaStackTests
+public unsafe class ArenaPtrStackTests
 {
     [Fact]
     public void PushAndPop_ShouldReturnInLIFOOrder()
     {
         using var arena = new ArenaAllocator(4096);
-        var stack = new ArenaStack<int>(arena);
+        var stack = new ArenaPtrStack<int>(arena);
 
         var a = (int*)arena.Alloc(sizeof(int));
         *a = 10;
@@ -36,7 +36,7 @@ public unsafe class ArenaStackTests
     public void Peek_ShouldReturnTopWithoutRemoving()
     {
         using var arena = new ArenaAllocator(4096);
-        var stack = new ArenaStack<int>(arena);
+        var stack = new ArenaPtrStack<int>(arena);
 
         var x = (int*)arena.Alloc(sizeof(int));
         *x = 1;
@@ -59,7 +59,7 @@ public unsafe class ArenaStackTests
     public void Clear_ShouldResetCount()
     {
         using var arena = new ArenaAllocator(4096);
-        var stack = new ArenaStack<int>(arena);
+        var stack = new ArenaPtrStack<int>(arena);
 
         for (int i = 0; i < 3; i++)
         {
@@ -85,7 +85,7 @@ public unsafe class ArenaStackTests
     public void Pop_OnEmpty_ShouldThrow()
     {
         using var arena = new ArenaAllocator(4096);
-        var stack = new ArenaStack<int>(arena);
+        var stack = new ArenaPtrStack<int>(arena);
 
         Assert.Throws<InvalidOperationException>(() => stack.Pop());
     }
@@ -94,7 +94,7 @@ public unsafe class ArenaStackTests
     public void Peek_OnEmpty_ShouldThrow()
     {
         using var arena = new ArenaAllocator(4096);
-        var stack = new ArenaStack<int>(arena);
+        var stack = new ArenaPtrStack<int>(arena);
 
         Assert.Throws<InvalidOperationException>(() => stack.Peek());
     }
@@ -103,7 +103,7 @@ public unsafe class ArenaStackTests
     public void PushBeyondInitialCapacity_ShouldGrow()
     {
         using var arena = new ArenaAllocator(4096);
-        var stack = new ArenaStack<int>(arena, initialCapacity: 2);
+        var stack = new ArenaPtrStack<int>(arena, initialCapacity: 2);
 
         for (int i = 0; i < 10; i++)
         {
@@ -126,7 +126,7 @@ public unsafe class ArenaStackTests
     public void CanHandleUnmanagedStruct()
     {
         using var arena = new ArenaAllocator(4096);
-        var stack = new ArenaStack<Foobar>(arena, initialCapacity: 4);
+        var stack = new ArenaPtrStack<Foobar>(arena, initialCapacity: 4);
 
         var f1 = (Foobar*)arena.Alloc((uint)sizeof(Foobar));
         *f1 = new Foobar { X = 1, Y = 2 };
@@ -140,6 +140,98 @@ public unsafe class ArenaStackTests
         var popped = stack.Pop();
         Assert.Equal(3, popped->X);
         Assert.Equal(4, popped->Y);
+    }
+
+    [Fact]
+    public void CopyingStack_ShouldShareHeader()
+    {
+        using var arena = new ArenaAllocator(4096);
+        var original = new ArenaPtrStack<int>(arena);
+
+        var a = (int*)arena.Alloc(sizeof(int));
+        *a = 1;
+        original.Push(a);
+
+        // Copy the struct
+        var copy = original;
+
+        // Push via copy, pop via original
+        var b = (int*)arena.Alloc(sizeof(int));
+        *b = 2;
+        copy.Push(b);
+
+        Assert.Equal(2, original.Count); // Both see the same header
+        Assert.Equal(2, *original.Peek());
+        Assert.Equal(2, *copy.Peek());
+
+        // Pop via one should reflect in the other
+        _ = original.Pop();
+        Assert.Equal(1, copy.Count);
+        Assert.Equal(1, *copy.Peek());
+    }
+
+    [Fact]
+    public void StackInsideStruct_ShouldRetainSharedState()
+    {
+        using var arena = new ArenaAllocator(4096);
+        var container1 = new Container { Stack = new ArenaPtrStack<int>(arena) };
+
+        var val1 = (int*)arena.Alloc(sizeof(int));
+        *val1 = 42;
+        container1.Stack.Push(val1);
+
+        var container2 = container1; // copy the whole struct
+
+        var val2 = (int*)arena.Alloc(sizeof(int));
+        *val2 = 84;
+        container2.Stack.Push(val2);
+
+        Assert.Equal(2, container1.Stack.Count);
+        Assert.Equal(84, *container1.Stack.Peek());
+    }
+
+    [Fact]
+    public void ShouldHandleLargeNumberOfPushes()
+    {
+        using var arena = new ArenaAllocator(1024);
+        var stack = new ArenaPtrStack<int>(arena, 4);
+
+        const int count = 10_000;
+        for (int i = 0; i < count; i++)
+        {
+            var ptr = (int*)arena.Alloc(sizeof(int));
+            *ptr = i;
+            stack.Push(ptr);
+        }
+
+        Assert.Equal(count, stack.Count);
+        for (int i = count - 1; i >= 0; i--)
+        {
+            Assert.Equal(i, *stack.Pop());
+        }
+    }
+
+    [Fact]
+    public void Growth_ShouldPreserveSharedHeader()
+    {
+        using var arena = new ArenaAllocator(4096);
+        var s1 = new ArenaPtrStack<int>(arena, 1);
+        var s2 = s1;
+
+        for (int i = 0; i < 10; i++)
+        {
+            var p = (int*)arena.Alloc(sizeof(int));
+            *p = i;
+            s1.Push(p);
+        }
+
+        Assert.Equal(10, s2.Count);
+        Assert.Equal(9, *s2.Peek());
+    }
+
+    private struct Container
+    {
+        public ArenaPtrStack<int> Stack;
     }
 
     private struct Foobar

@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.CompilerServices;
 using JsonPath.Parser.Allocators;
 
 /*
@@ -76,6 +77,8 @@ public unsafe class ArenaAllocator : IDisposable
     private readonly NativeAllocatorBackend _backend;
     private bool _disposed;
 
+    private readonly object _disposeLock = new();
+    
     public ArenaAllocator(
         nuint initialSize = 64 * 1024,
         nuint maxSize = 256 * 1024 * 1024,
@@ -189,15 +192,26 @@ public unsafe class ArenaAllocator : IDisposable
 
     public void Reset()
     {
-        for (var seg = _first; seg != null; seg = seg->Next)
+        lock (_disposeLock)
         {
-            seg->Offset = 0;
-        }
+            for (var seg = _first; seg != null; seg = seg->Next)
+            {
+                seg->Offset = 0;
+            }
 
-        _current = _first;
+            _current = _first;
+        }
     }
 
     public void Dispose()
+    {
+        lock (_disposeLock)
+        {
+            Dispose(true);
+        }
+    }
+
+    private void Dispose(bool isDisposing)
     {
         if (_disposed)
         {
@@ -215,5 +229,21 @@ public unsafe class ArenaAllocator : IDisposable
         }
 
         _first = _current = null;
+
+        if (isDisposing)
+        {
+            GC.SuppressFinalize(this);
+        }
+    }
+
+    /// <summary>
+    /// Finalizes an instance of the <see cref="ArenaAllocator"/> class.
+    /// </summary>
+    ~ArenaAllocator()
+    {
+        lock (_disposeLock)
+        {
+            Dispose(false);
+        }
     }
 }

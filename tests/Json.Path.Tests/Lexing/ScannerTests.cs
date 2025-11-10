@@ -8,7 +8,7 @@ namespace Json.Path.Tests.Lexing;
 public class ScannerTests
 {
     private static readonly SubScannerRepository ScannerRepository = new();
-
+    
     [Fact]
     public void Can_Handle_Simple_Lexing()
     {
@@ -23,8 +23,9 @@ public class ScannerTests
         ];
         using var allocator = new ArenaAllocator();
         var scanner = new Scanner(allocator, ScannerRepository);
+        var dataTable = new AstDataTable(allocator);
 
-        Assert.True(scanner.TryScan(input, out var tokens, out var errors));
+        Assert.True(scanner.TryScan(input, ref dataTable, out var tokens, out var errors));
         var tokenCollection = tokens.AsSpan();
         Assert.True(errors.IsEmpty, "errors are not expected!");
         Assert.False(tokens.IsEmpty, "expected successful tokenization");
@@ -68,8 +69,9 @@ public class ScannerTests
 
         using var allocator = new ArenaAllocator();
         var scanner = new Scanner(allocator, ScannerRepository);
+        var dataTable = new AstDataTable(allocator);
 
-        var success = scanner.TryScan(input, out var tokens, out var errors);
+        var success = scanner.TryScan(input, ref dataTable, out var tokens, out var errors);
         Assert.True(success);
         Assert.True(errors.IsEmpty);
 
@@ -128,8 +130,9 @@ public class ScannerTests
 
         using var allocator = new ArenaAllocator();
         var scanner = new Scanner(allocator, ScannerRepository);
+        var dataTable = new AstDataTable(allocator);
 
-        var success = scanner.TryScan(input, out var tokens, out var errors);
+        var success = scanner.TryScan(input, ref dataTable, out var tokens, out var errors);
 
         Assert.True(success);
         Assert.True(errors.IsEmpty);
@@ -150,8 +153,9 @@ public class ScannerTests
 
         using var allocator = new ArenaAllocator();
         var scanner = new Scanner(allocator, ScannerRepository);
+        var dataTable = new AstDataTable(allocator);
 
-        var success = scanner.TryScan(input, out var tokens, out var errors);
+        var success = scanner.TryScan(input, ref dataTable, out var tokens, out var errors);
 
         Assert.False(success);
         Assert.False(errors.IsEmpty);
@@ -173,8 +177,9 @@ public class ScannerTests
 
         using var allocator = new ArenaAllocator();
         var scanner = new Scanner(allocator, ScannerRepository);
+        var dataTable = new AstDataTable(allocator);
 
-        var success = scanner.TryScan(input, out var tokens, out var errors);
+        var success = scanner.TryScan(input, ref dataTable, out var tokens, out var errors);
 
         Assert.True(success);
         Assert.True(errors.IsEmpty);
@@ -193,8 +198,9 @@ public class ScannerTests
 
         using var allocator = new ArenaAllocator();
         var scanner = new Scanner(allocator, ScannerRepository);
+        var dataTable = new AstDataTable(allocator);
 
-        var success = scanner.TryScan(input, out var tokens, out var errors);
+        var success = scanner.TryScan(input, ref dataTable, out var tokens, out var errors);
 
         Assert.True(success);
         Assert.True(errors.IsEmpty);

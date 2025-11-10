@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 
 #if DEBUG
 using System.Collections.Concurrent;
+using System.Diagnostics;
 #endif
 
 namespace JsonPath.Parser.Allocators;
@@ -27,6 +28,27 @@ public static unsafe class NativeAllocator
 
     private static readonly nuint HeaderSize = (nuint)sizeof(AllocationHeader);
     private static readonly nuint PageSize = (nuint)Environment.SystemPageSize;
+
+    static NativeAllocator()
+    {
+#if DEBUG
+        AppDomain.CurrentDomain.ProcessExit += (_, _) =>
+        {
+            var activeAllocationSnapshot = _active.ToList();
+            if (activeAllocationSnapshot.Count > 0)
+            {
+                Console.Error.WriteLine($"[NativeAllocator] { activeAllocationSnapshot.Count } allocation(s) not freed before process exit:");
+                foreach (var kv in activeAllocationSnapshot)
+                {
+                    var info = kv.Value;
+                    Console.Error.WriteLine($"  -> Leak at 0x{kv.Key:X}, size {info.ReservedSize} bytes, backend {info.Backend}");
+                }
+            }
+
+            Debug.Assert(activeAllocationSnapshot.Count == 0, "having _active.Count > 0 at process shutdown means we have a leak. THIS IS BAD!");
+        };
+#endif
+    }
 
     private static bool IsWindowsPlatform()
         => RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
