@@ -36,3 +36,4 @@ public class SubScannerRepository : IReadOnlyList<ISubScanner>
 
     public ISubScanner this[int index] => TokenScanners[index];
 }
+

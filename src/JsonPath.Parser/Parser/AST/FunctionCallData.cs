@@ -19,7 +19,8 @@ public readonly unsafe struct FunctionCallData
 
     public static FunctionCallData From(in ReadOnlySpan<char> functionName, ArenaAllocator allocator)
     {
-        var argListPtr = (ArenaList<FunctionArgument>*)allocator.Alloc((nuint)Unsafe.SizeOf<ArenaList<FunctionArgument>>());
+        var argListPtr = (ArenaList<FunctionArgument>*)allocator.Alloc(
+            (nuint)Unsafe.SizeOf<ArenaList<FunctionArgument>>());
         *argListPtr = new ArenaList<FunctionArgument>(allocator);
         return new FunctionCallData(
             ArenaString.Clone(functionName, allocator),

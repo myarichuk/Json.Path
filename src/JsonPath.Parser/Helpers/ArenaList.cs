@@ -16,6 +16,7 @@ public unsafe struct ArenaListHeader
 /// <summary>
 /// A simple, arena-backed continuous list for unmanaged structs.
 /// </summary>
+[StructLayout(LayoutKind.Sequential)]
 public unsafe struct ArenaList<T>
     where T : unmanaged
 {

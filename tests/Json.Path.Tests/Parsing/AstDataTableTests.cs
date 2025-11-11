@@ -243,6 +243,7 @@ public class AstDataTableTests : IDisposable
             fn.Args->Add(new FunctionArgument
             {
                 ArgName = ArenaString.Clone("item", _arena),
+                Kind = TokenKind.Number,
             });
 
             Assert.Equal("prop", data.GetName(nameIdx).ToString());
