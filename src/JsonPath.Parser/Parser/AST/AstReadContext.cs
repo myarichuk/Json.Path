@@ -4,8 +4,17 @@ using JsonPath.Parser.Helpers;
 // ReSharper disable CheckNamespace
 namespace JsonPath.Parser;
 
+/// <summary>
+/// Provides helper methods for reading strongly typed data from an <see cref="AstDataTable"/>.
+/// </summary>
 public readonly unsafe ref struct AstReadContext
 {
+    /// <summary>
+    /// Retrieves the object representation associated with a node, or <see langword="null"/> when the node is absent.
+    /// </summary>
+    /// <param name="data">The table containing AST metadata.</param>
+    /// <param name="node">The node describing the desired data.</param>
+    /// <returns>The boxed data represented by <paramref name="node"/>, or <see langword="null"/>.</returns>
     public object? GetData(ref AstDataTable data, AstNode* node)
     {
         if (node == null)
@@ -24,6 +33,14 @@ public readonly unsafe ref struct AstReadContext
         };
     }
 
+    /// <summary>
+    /// Retrieves the typed representation associated with a node.
+    /// </summary>
+    /// <typeparam name="T">The expected data type.</typeparam>
+    /// <param name="data">The table containing AST metadata.</param>
+    /// <param name="node">The node describing the desired data.</param>
+    /// <returns>The requested data typed as <typeparamref name="T"/>.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when the node kind does not match <typeparamref name="T"/>.</exception>
     public T GetData<T>(ref AstDataTable data, AstNode* node)
     {
         if (node == null)

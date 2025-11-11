@@ -8,19 +8,46 @@ using System.Diagnostics;
 
 namespace JsonPath.Parser.Allocators;
 
+/// <summary>
+/// Identifies the mechanism used to allocate unmanaged memory.
+/// </summary>
 public enum NativeAllocatorBackend
 {
+    /// <summary>
+    /// Uses runtime-provided unmanaged allocation helpers.
+    /// </summary>
     DotNetUnmanaged,
+
+    /// <summary>
+    /// Uses platform invoke to call OS-specific allocation APIs.
+    /// </summary>
     PlatformInvoke,
 }
 
+/// <summary>
+/// Describes the page protection applied to unmanaged memory.
+/// </summary>
 public enum MemoryProtectionMode
 {
+    /// <summary>
+    /// No additional protection is applied.
+    /// </summary>
     None,
+
+    /// <summary>
+    /// Marks the memory as read-only.
+    /// </summary>
     ReadOnly,
+
+    /// <summary>
+    /// Marks the memory as inaccessible.
+    /// </summary>
     NoAccess,
 }
 
+/// <summary>
+/// Provides helpers for allocating and freeing unmanaged buffers with optional guard pages.
+/// </summary>
 public static unsafe class NativeAllocator
 {
     private const ulong MagicValue = 0xDEADC0DECAFEBEEFUL;
@@ -91,6 +118,14 @@ public static unsafe class NativeAllocator
         public NativeAllocatorBackend Backend;
     }
 
+    /// <summary>
+    /// Allocates unmanaged memory with optional guard pages and protection.
+    /// </summary>
+    /// <param name="size">The requested allocation size in bytes.</param>
+    /// <param name="backend">The backend used to fulfill the allocation.</param>
+    /// <param name="protection">Optional memory protection applied after allocation.</param>
+    /// <returns>A pointer to the usable memory region, or <see langword="null"/> when <paramref name="size"/> is zero.</returns>
+    /// <exception cref="OutOfMemoryException">Thrown when the allocation fails.</exception>
     public static void* Alloc(
         nuint size,
         NativeAllocatorBackend backend = NativeAllocatorBackend.PlatformInvoke,
@@ -172,8 +207,15 @@ public static unsafe class NativeAllocator
         return userPtr;
     }
 
-    public static void Free(void* userPtr,
-                            NativeAllocatorBackend backend = NativeAllocatorBackend.PlatformInvoke)
+    /// <summary>
+    /// Releases unmanaged memory previously allocated via <see cref="Alloc"/>.
+    /// </summary>
+    /// <param name="userPtr">Pointer returned by <see cref="Alloc"/>.</param>
+    /// <param name="backend">Backend used when the memory was allocated.</param>
+    /// <exception cref="InvalidOperationException">Thrown when the pointer is invalid or the backend mismatches.</exception>
+    public static void Free(
+        void* userPtr,
+        NativeAllocatorBackend backend = NativeAllocatorBackend.PlatformInvoke)
     {
         if (userPtr is null)
         {
@@ -334,6 +376,12 @@ public static unsafe class NativeAllocator
     }
 #endif
 
+    /// <summary>
+    /// Applies page protection to an existing allocation.
+    /// </summary>
+    /// <param name="ptr">Pointer to the memory region.</param>
+    /// <param name="size">Number of bytes to protect.</param>
+    /// <param name="mode">Desired protection mode.</param>
     public static void ApplyProtection(void* ptr, nuint size, MemoryProtectionMode mode)
     {
         if (ptr is null || size == 0)
@@ -418,6 +466,9 @@ public static unsafe class NativeAllocator
         => throw new InvalidOperationException($"{msg} (errno {Marshal.GetLastWin32Error()})");
 
 #if DEBUG
+    /// <summary>
+    /// Gets the number of active allocations tracked in debug builds.
+    /// </summary>
     public static int ActiveCount => _active.Count;
 #endif
 }

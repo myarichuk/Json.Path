@@ -26,14 +26,26 @@ public class SubScannerRepository : IReadOnlyList<ISubScanner>
         TokenScanners = scanners;
     }
 
+    /// <summary>
+    /// Returns an enumerator that iterates through the configured sub-scanners.
+    /// </summary>
+    /// <returns>An enumerator for the repository.</returns>
     public IEnumerator<ISubScanner> GetEnumerator() =>
         TokenScanners.GetEnumerator();
 
     IEnumerator IEnumerable.GetEnumerator() =>
         TokenScanners.GetEnumerator();
 
+    /// <summary>
+    /// Gets the number of configured sub-scanners.
+    /// </summary>
     public int Count => TokenScanners.Count;
 
+    /// <summary>
+    /// Gets the sub-scanner at the specified index.
+    /// </summary>
+    /// <param name="index">The zero-based index of the scanner to retrieve.</param>
+    /// <returns>The sub-scanner instance.</returns>
     public ISubScanner this[int index] => TokenScanners[index];
 }
 

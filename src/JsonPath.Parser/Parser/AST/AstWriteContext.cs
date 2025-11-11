@@ -3,10 +3,21 @@ using JsonPath.Parser.Helpers;
 
 namespace JsonPath.Parser;
 
+/// <summary>
+/// Facilitates writing <see cref="AstNode"/> instances and associated metadata into an <see cref="AstDataTable"/>.
+/// </summary>
 public readonly unsafe ref struct AstWriteContext(in ArenaAllocator allocator)
 {
     private readonly ArenaAllocator _allocator = allocator;
 
+    /// <summary>
+    /// Creates a node populated with metadata from the provided data payload.
+    /// </summary>
+    /// <typeparam name="T">The type of data being associated with the node.</typeparam>
+    /// <param name="dataTable">Destination table for metadata storage.</param>
+    /// <param name="kind">The AST kind represented by the node.</param>
+    /// <param name="data">The payload backing the node.</param>
+    /// <returns>A pointer to the allocated node.</returns>
     public AstNode* CreateNode<T>(ref AstDataTable dataTable, AstKind kind, in T data)
     {
         var node = AllocNode(kind);
