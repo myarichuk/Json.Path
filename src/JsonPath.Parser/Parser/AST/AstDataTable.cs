@@ -1,3 +1,4 @@
+using System;
 using System.Runtime.CompilerServices;
 using JsonPath.Parser.Helpers;
 
@@ -10,6 +11,7 @@ public struct AstDataTable(ArenaAllocator arena)
     private ArenaList<long> _indices = new(arena);
     private ArenaList<SliceData> _slices = new(arena);
     private ArenaList<FunctionCallData> _functions = new(arena);
+    private ArenaList<FunctionArgument> _functionArguments = new(arena);
     private readonly ArenaAllocator _arena = arena;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -48,8 +50,57 @@ public struct AstDataTable(ArenaAllocator arena)
     public uint AddFunction(in FunctionCallData fn)
     {
         var idx = _functions.Length;
-        _functions.Add(fn);
+        var storedFn = fn;
+        storedFn.ArgumentStartOffset = uint.MaxValue;
+        storedFn.ArgumentCount = 0;
+        _functions.Add(storedFn);
         return (uint)idx;
+    }
+
+    public void AddFunctionArgument(uint functionIndex, in FunctionArgument argument)
+    {
+        ref var function = ref _functions[(int)functionIndex];
+
+        if (function.ArgumentCount == ushort.MaxValue)
+        {
+            throw new InvalidOperationException("Function argument count exceeded supported limit.");
+        }
+
+        var expectedIndex = (int)_functionArguments.Length;
+        if (function.ArgumentCount == 0)
+        {
+            function.ArgumentStartOffset = (uint)expectedIndex;
+        }
+        else if (function.ArgumentStartOffset + function.ArgumentCount != (uint)expectedIndex)
+        {
+            throw new InvalidOperationException("Function arguments must be appended contiguously.");
+        }
+
+        _functionArguments.Add(argument);
+        function.ArgumentCount++;
+    }
+
+    public readonly ReadOnlySpan<FunctionArgument> GetFunctionArguments(uint functionIndex)
+    {
+        ref readonly var function = ref _functions[(int)functionIndex];
+        if (function.ArgumentCount == 0)
+        {
+            return ReadOnlySpan<FunctionArgument>.Empty;
+        }
+
+        var start = (int)function.ArgumentStartOffset;
+        return _functionArguments.AsSpan().Slice(start, function.ArgumentCount);
+    }
+
+    public readonly ref FunctionArgument GetFunctionArgument(uint functionIndex, int argumentIndex)
+    {
+        ref var function = ref _functions[(int)functionIndex];
+        if ((uint)argumentIndex >= function.ArgumentCount)
+        {
+            throw new ArgumentOutOfRangeException(nameof(argumentIndex));
+        }
+
+        return ref _functionArguments[(int)(function.ArgumentStartOffset + (uint)argumentIndex)];
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -74,5 +125,6 @@ public struct AstDataTable(ArenaAllocator arena)
         _indices.Reset();
         _slices.Reset();
         _functions.Reset();
+        _functionArguments.Reset();
     }
 }
