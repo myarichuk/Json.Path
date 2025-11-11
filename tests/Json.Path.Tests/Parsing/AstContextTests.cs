@@ -88,17 +88,22 @@ public unsafe class AstContextTests : IDisposable
         var reader = default(AstReadContext);
 
         var fn = FunctionCallData.From("length", _allocator);
-        fn.Args->Add(new FunctionArgument
+        var node = writer.CreateNode(ref data, AstKind.FunctionCall, fn);
+        data.AddFunctionArgument(node->DataIndex, new FunctionArgument
         {
             ArgName = ArenaString.Clone("foo", _allocator),
             Kind = TokenKind.False,
             Value = null,
         });
-
-        var node = writer.CreateNode(ref data, AstKind.FunctionCall, fn);
         var readBack = reader.GetData<FunctionCallData>(ref data, node);
 
-        Assert.Equal(fn, readBack);
+        Assert.Equal("length", readBack.Name.ToString());
+        Assert.Equal((ushort)1, readBack.ArgumentCount);
+
+        var args = data.GetFunctionArguments(node->DataIndex);
+        Assert.Equal(1, args.Length);
+        Assert.Equal("foo", args[0].ArgName.ToString());
+        Assert.Equal(TokenKind.False, args[0].Kind);
     }
 
     [Fact]

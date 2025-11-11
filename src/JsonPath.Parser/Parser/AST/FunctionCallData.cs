@@ -1,4 +1,3 @@
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using JsonPath.Parser.Helpers;
 using JsonPath.Parser.Lexer;
@@ -6,29 +5,26 @@ using JsonPath.Parser.Lexer;
 namespace JsonPath.Parser;
 
 [StructLayout(LayoutKind.Sequential)]
-public readonly unsafe struct FunctionCallData
+public struct FunctionCallData
 {
     public readonly ArenaString Name;
-    public readonly ArenaList<FunctionArgument>* Args;
+    public uint ArgumentStartOffset;
+    public ushort ArgumentCount;
 
-    private FunctionCallData(ArenaString name, ArenaList<FunctionArgument>* args)
+    private FunctionCallData(ArenaString name)
     {
         Name = name;
-        Args = args;
+        ArgumentStartOffset = 0;
+        ArgumentCount = 0;
     }
 
     public static FunctionCallData From(in ReadOnlySpan<char> functionName, ArenaAllocator allocator)
     {
-        var argListPtr = (ArenaList<FunctionArgument>*)allocator.Alloc(
-            (nuint)Unsafe.SizeOf<ArenaList<FunctionArgument>>());
-        *argListPtr = new ArenaList<FunctionArgument>(allocator);
-        return new FunctionCallData(
-            ArenaString.Clone(functionName, allocator),
-            argListPtr);
+        return new FunctionCallData(ArenaString.Clone(functionName, allocator));
     }
 
     public override string ToString() =>
-        $"{Name}(args={(Args != null ? Args->Length : 0)})";
+        $"{Name}(args={ArgumentCount})";
 }
 
 [StructLayout(LayoutKind.Sequential)]
