@@ -73,17 +73,7 @@ public struct AstDataTable(ArenaAllocator arena)
         }
         else if (function.ArgumentStartOffset + function.ArgumentCount != (uint)expectedIndex)
         {
-            var oldStart = function.ArgumentStartOffset;
-            var oldCount = function.ArgumentCount;
-            var newStart = (uint)_functionArguments.Length;
-
-            for (var i = 0; i < oldCount; i++)
-            {
-                var existingArgument = _functionArguments[(int)(oldStart + (uint)i)];
-                _functionArguments.Add(existingArgument);
-            }
-
-            function.ArgumentStartOffset = newStart;
+            throw new InvalidOperationException("Function arguments must be appended contiguously.");
         }
 
         _functionArguments.Add(argument);

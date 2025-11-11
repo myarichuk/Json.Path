@@ -261,41 +261,6 @@ public class AstDataTableTests : IDisposable
         }
 
     [Fact]
-    public void AddFunctionArguments_AllowsNestedInterleaving()
-    {
-        var data = new AstDataTable(_arena);
-
-        var outerIdx = data.AddFunction(FunctionCallData.From("outer", _arena));
-        var inner1Idx = data.AddFunction(FunctionCallData.From("inner1", _arena));
-        var inner2Idx = data.AddFunction(FunctionCallData.From("inner2", _arena));
-
-        FunctionArgument CreateArg(string name) => new()
-        {
-            ArgName = ArenaString.Clone(name, _arena),
-            Kind = TokenKind.Identifier,
-            Value = null,
-        };
-
-        data.AddFunctionArgument(inner1Idx, CreateArg("a"));
-        data.AddFunctionArgument(inner1Idx, CreateArg("b"));
-
-        data.AddFunctionArgument(outerIdx, CreateArg("inner1"));
-
-        data.AddFunctionArgument(inner2Idx, CreateArg("c"));
-        data.AddFunctionArgument(inner2Idx, CreateArg("d"));
-
-        data.AddFunctionArgument(outerIdx, CreateArg("inner2"));
-
-        var outer = data.GetFunction(outerIdx);
-        Assert.Equal((ushort)2, outer.ArgumentCount);
-
-        var args = data.GetFunctionArguments(outerIdx);
-        Assert.Equal(2, args.Length);
-        Assert.Equal("inner1", args[0].ArgName.ToString());
-        Assert.Equal("inner2", args[1].ArgName.ToString());
-    }
-
-    [Fact]
     public void FunctionArguments_RemainStable_WithRepeatedGc()
     {
         var data = new AstDataTable(_arena);
