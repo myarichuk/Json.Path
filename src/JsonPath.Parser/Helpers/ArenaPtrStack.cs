@@ -3,11 +3,25 @@ using System.Runtime.InteropServices;
 
 namespace JsonPath.Parser.Helpers;
 
+/// <summary>
+/// Describes the metadata shared by copies of an <see cref="ArenaPtrStack{T}"/>.
+/// </summary>
 [StructLayout(LayoutKind.Sequential)]
 public unsafe struct ArenaPtrStackHeader
 {
+    /// <summary>
+    /// Gets or sets the number of pointers contained in the stack.
+    /// </summary>
     public int Count;
+
+    /// <summary>
+    /// Gets or sets the capacity of the stack.
+    /// </summary>
     public int Capacity;
+
+    /// <summary>
+    /// Gets or sets the pointer to the unmanaged array of entries.
+    /// </summary>
     public void* Data; // points to a T* array
 }
 
@@ -22,6 +36,11 @@ public unsafe struct ArenaPtrStack<T>
     private readonly ArenaAllocator _arena;
     private ArenaPtrStackHeader* _header;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ArenaPtrStack{T}"/> struct.
+    /// </summary>
+    /// <param name="arena">The allocator providing storage.</param>
+    /// <param name="initialCapacity">Initial pointer capacity of the stack.</param>
     public ArenaPtrStack(ArenaAllocator arena, int initialCapacity = 16)
     {
         if (initialCapacity <= 0)
@@ -42,10 +61,29 @@ public unsafe struct ArenaPtrStack<T>
             align: (nuint)IntPtr.Size);
     }
 
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void ThrowInvalidOperation(string msg)
+        => throw new InvalidOperationException(msg);
+
+    /// <summary>
+    /// Gets a value indicating whether the stack is empty.
+    /// </summary>
     public bool IsEmpty => _header->Count == 0;
+
+    /// <summary>
+    /// Gets the number of items currently stored in the stack.
+    /// </summary>
     public int Count => _header->Count;
+
+    /// <summary>
+    /// Gets the total allocated capacity of the stack.
+    /// </summary>
     public int Capacity => _header->Capacity;
 
+    /// <summary>
+    /// Pushes a pointer onto the stack, growing the backing buffer as needed.
+    /// </summary>
+    /// <param name="value">The pointer to push.</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Push(T* value)
     {
@@ -58,6 +96,11 @@ public unsafe struct ArenaPtrStack<T>
         data[_header->Count++] = value;
     }
 
+    /// <summary>
+    /// Removes and returns the pointer at the top of the stack.
+    /// </summary>
+    /// <returns>The pointer previously at the top of the stack.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when the stack is empty.</exception>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public T* Pop()
     {
@@ -70,6 +113,11 @@ public unsafe struct ArenaPtrStack<T>
         return data[--_header->Count];
     }
 
+    /// <summary>
+    /// Returns the pointer at the top of the stack without removing it.
+    /// </summary>
+    /// <returns>The pointer at the top of the stack.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when the stack is empty.</exception>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public T* Peek()
     {
@@ -82,6 +130,9 @@ public unsafe struct ArenaPtrStack<T>
         return data[_header->Count - 1];
     }
 
+    /// <summary>
+    /// Clears the stack contents without releasing the backing buffer.
+    /// </summary>
     public void Clear() => _header->Count = 0;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -104,7 +155,4 @@ public unsafe struct ArenaPtrStack<T>
         _header->Capacity = (int)newCap;
     }
 
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    private static void ThrowInvalidOperation(string msg)
-        => throw new InvalidOperationException(msg);
 }

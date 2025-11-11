@@ -13,7 +13,7 @@ public readonly ref struct Scanner
     private readonly SubScannerRepository _subScanners;
 
     /// <summary>
-    /// Provides the high level orchestration logic for lexing JsonPath expressions.
+    /// Initializes a new instance of the <see cref="Scanner"/> struct.
     /// </summary>
     /// <param name="allocator">Arena allocator used to back the token and error collections.</param>
     /// <param name="subScanners">Repository containing the concrete sub-scanners.</param>
