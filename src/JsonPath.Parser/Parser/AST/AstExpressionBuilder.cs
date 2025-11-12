@@ -1,3 +1,4 @@
+using System;
 using JsonPath.Parser.Helpers;
 
 namespace JsonPath.Parser;
@@ -42,7 +43,12 @@ public unsafe ref struct AstExpressionBuilder(
     /// </summary>
     public AstExpressionBuilder SiblingExpression<TData>(AstKind kind, in TData data)
     {
-        var handle = _builder.AddSibling(kind);
+        if (_current.IsNull)
+        {
+            throw new InvalidOperationException("Cannot add a sibling without a current node.");
+        }
+
+        var handle = _builder.AddSiblingAfter(_current.Ptr, kind);
         _write.AssignNode(handle.Ptr, ref _data, kind, data);
         _current = handle;
 

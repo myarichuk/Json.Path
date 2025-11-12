@@ -54,7 +54,9 @@ public unsafe ref struct AstBuilder
     public void End()
     {
         if (_stack.Count > 1)
+        {
             _stack.Pop();
+        }
     }
 
     /// <summary>
@@ -75,6 +77,14 @@ public unsafe ref struct AstBuilder
     public AstHandle AddSibling(AstKind kind)
     {
         var current = _stack.Peek();
+        return AddSiblingAfter(current, kind);
+    }
+
+    /// <summary>
+    /// Adds a sibling relative to the supplied node.
+    /// </summary>
+    public AstHandle AddSiblingAfter(AstNode* current, AstKind kind)
+    {
         var sib = AllocNode(kind);
 
         // Insert after current node
@@ -97,7 +107,9 @@ public unsafe ref struct AstBuilder
 
         var last = parent->NextChild;
         while (last->NextSibling != null)
+        {
             last = last->NextSibling;
+        }
 
         last->NextSibling = child;
     }
