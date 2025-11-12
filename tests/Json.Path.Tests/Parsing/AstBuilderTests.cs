@@ -52,6 +52,15 @@ public unsafe class AstBuilderTests
         Assert.Equal(AstKind.WildcardSelector, third->Kind);
 
         Assert.True(third->NextSibling == null);
+
+        // Ensure the root scope did not change while adding siblings.
+        Assert.True(builder.Root->NextSibling == null);
+
+        // The helper should allow adding siblings relative to a known node pointer.
+        var fourth = builder.AddSiblingAfter(third, AstKind.FilterExpression);
+        Assert.True(third->NextSibling == fourth.Ptr);
+        Assert.Equal(AstKind.FilterExpression, fourth.Ptr->Kind);
+        Assert.True(fourth.Ptr->NextSibling == null);
     }
-    
+
 }
