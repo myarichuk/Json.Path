@@ -9,7 +9,6 @@ namespace JsonPath.Parser;
 /// </summary>
 public struct AstDataTable(ArenaAllocator arena)
 {
-    private readonly ArenaAllocator _arena = arena;
     private ArenaList<ArenaString> _names = new(arena);
     private ArenaList<LiteralData> _literals = new(arena);
     private ArenaList<long> _indices = new(arena);

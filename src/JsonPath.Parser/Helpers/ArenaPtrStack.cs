@@ -34,7 +34,7 @@ public unsafe struct ArenaPtrStack<T>
     where T : unmanaged
 {
     private readonly ArenaAllocator _arena;
-    private ArenaPtrStackHeader* _header;
+    private readonly ArenaPtrStackHeader* _header;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ArenaPtrStack{T}"/> struct.

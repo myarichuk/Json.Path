@@ -9,23 +9,19 @@ public unsafe ref struct AstBuilder
 {
     private readonly ArenaAllocator _allocator;
     private readonly AstNode* _root;
-    private ArenaPtrStack<AstNode> _ptrStack;
-    
-    /// <summary>
-    /// Initializes a new instance of the <see cref="AstBuilder"/> struct.
-    /// </summary>
-    /// <param name="allocator">bump-allocator instance</param>
+    private ArenaPtrStack<AstNode> _stack;
+
     public AstBuilder(in ArenaAllocator allocator)
     {
         _allocator = allocator;
-        _ptrStack = new ArenaPtrStack<AstNode>(_allocator);
+        _stack = new ArenaPtrStack<AstNode>(_allocator);
 
         _root = AllocNode(AstKind.RootIdentifier);
+
+        // Root becomes the initial scope
+        _stack.Push(_root);
     }
 
-    /// <summary>
-    /// Gets the root node of the constructed AST.
-    /// </summary>
     public AstNode* Root => _root;
 
     private AstNode* AllocNode(AstKind kind)
@@ -39,48 +35,71 @@ public unsafe ref struct AstBuilder
     }
 
     /// <summary>
-    /// Adds a child node under the current parent and returns a handle to it.
+    /// Begin a nested AST node: allocate, attach to the current parent, and descend.
     /// </summary>
-    /// <typeparam name="TData">Unused generic type parameter kept for parity with legacy API expectations.</typeparam>
-    /// <param name="kind">The AST kind of the child node.</param>
-    /// <returns>An <see cref="AstHandle"/> pointing to the new node.</returns>
-    public AstHandle AddChild<TData>(AstKind kind)
-        where TData : unmanaged
+    public AstHandle Begin(AstKind kind)
     {
-        var parent = _ptrStack.Peek(); // current parent
-        var child = AllocNode(kind);
+        var parent = _stack.Peek();
+        var node = AllocNode(kind);
 
-        if (parent->NextChild == null)
-        {
-            parent->NextChild = child;
-        }
-        else
-        {
-            // find the last sibling
-            var last = parent->NextChild;
-            while (last->NextSibling != null)
-            {
-                last = last->NextSibling;
-            }
+        AttachChild(parent, node);
 
-            last->NextSibling = child;
-        }
-
-        return new AstHandle(child);
+        _stack.Push(node);
+        return new AstHandle(node);
     }
 
     /// <summary>
-    /// Adds a sibling node next to the current node and advances the cursor.
+    /// Ends the current node scope.
     /// </summary>
-    /// <param name="kind">The AST kind of the sibling node.</param>
-    /// <returns>An <see cref="AstHandle"/> pointing to the new node.</returns>
+    public void End()
+    {
+        if (_stack.Count > 1)
+            _stack.Pop();
+    }
+
+    /// <summary>
+    /// Add a child node to the current scope (does not change scope).
+    /// </summary>
+    public AstHandle AddChild(AstKind kind)
+    {
+        var parent = _stack.Peek();
+        var node = AllocNode(kind);
+
+        AttachChild(parent, node);
+        return new AstHandle(node);
+    }
+
+    /// <summary>
+    /// Add a sibling next to the current node (does not change scope).
+    /// </summary>
     public AstHandle AddSibling(AstKind kind)
     {
-        var current = _ptrStack.Peek();
-        var sibling = AllocNode(kind);
-        current->NextSibling = sibling;
-        _ptrStack.Push(sibling); // move cursor
-        return new AstHandle(sibling);
+        var current = _stack.Peek();
+        var sib = AllocNode(kind);
+
+        // Insert after current node
+        sib->NextSibling = current->NextSibling;
+        current->NextSibling = sib;
+
+        return new AstHandle(sib);
+    }
+
+    /// <summary>
+    /// Attaches a child node by walking to the last sibling.
+    /// </summary>
+    private static void AttachChild(AstNode* parent, AstNode* child)
+    {
+        if (parent->NextChild == null)
+        {
+            parent->NextChild = child;
+            return;
+        }
+
+        var last = parent->NextChild;
+        while (last->NextSibling != null)
+            last = last->NextSibling;
+
+        last->NextSibling = child;
     }
 }
 

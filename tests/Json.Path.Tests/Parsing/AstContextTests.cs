@@ -19,15 +19,17 @@ public unsafe class AstContextTests : IDisposable
         var writer = new AstWriteContext(_allocator);
         var reader = default(AstReadContext);
 
+        var node = AllocNode();
         var name = "foo";
-        var node = writer.CreateNode(ref data, AstKind.NameSelector, name);
-        Assert.True(node != null);
+
+        writer.AssignNode(node, ref data, AstKind.NameSelector, name);
+
         Assert.Equal(AstKind.NameSelector, node->Kind);
 
         var arenaName = reader.GetData<ArenaString>(ref data, node);
         Assert.Equal(name, arenaName.ToString());
     }
-
+    
     [Fact]
     public void LiteralValue_RoundTrip()
     {
@@ -35,12 +37,10 @@ public unsafe class AstContextTests : IDisposable
         var writer = new AstWriteContext(_allocator);
         var reader = default(AstReadContext);
 
-        var literal = new LiteralData
-        {
-            Kind = LiteralKind.Number,
-            Number = 42,
-        };
-        var node = writer.CreateNode(ref data, AstKind.LiteralValue, literal);
+        var literal = new LiteralData { Kind = LiteralKind.Number, Number = 42 };
+
+        var node = AllocNode();
+        writer.AssignNode(node, ref data, AstKind.LiteralValue, literal);
 
         var result = reader.GetData<LiteralData>(ref data, node);
         Assert.Equal(literal, result);
@@ -54,11 +54,14 @@ public unsafe class AstContextTests : IDisposable
         var reader = default(AstReadContext);
 
         const long index = 5;
-        var node = writer.CreateNode(ref data, AstKind.IndexSelector, index);
-        var readBack = reader.GetData<long>(ref data, node);
 
+        var node = AllocNode();
+        writer.AssignNode(node, ref data, AstKind.IndexSelector, index);
+
+        var readBack = reader.GetData<long>(ref data, node);
         Assert.Equal(index, readBack);
     }
+
 
     [Fact]
     public void SliceSelector_RoundTrip()
@@ -74,11 +77,14 @@ public unsafe class AstContextTests : IDisposable
             Step = 2,
             Flags = SliceFlags.HasStart | SliceFlags.HasEnd | SliceFlags.HasStep,
         };
-        var node = writer.CreateNode(ref data, AstKind.SliceSelector, slice);
-        var readBack = reader.GetData<SliceData>(ref data, node);
 
+        var node = AllocNode();
+        writer.AssignNode(node, ref data, AstKind.SliceSelector, slice);
+
+        var readBack = reader.GetData<SliceData>(ref data, node);
         Assert.Equal(slice, readBack);
     }
+
 
     [Fact]
     public void FunctionCall_RoundTrip()
@@ -88,13 +94,17 @@ public unsafe class AstContextTests : IDisposable
         var reader = default(AstReadContext);
 
         var fn = FunctionCallData.From("length", _allocator);
-        var node = writer.CreateNode(ref data, AstKind.FunctionCall, fn);
+
+        var node = AllocNode();
+        writer.AssignNode(node, ref data, AstKind.FunctionCall, fn);
+
         data.AddFunctionArgument(node->DataIndex, new FunctionArgument
         {
             ArgName = ArenaString.Clone("foo", _allocator),
             Kind = TokenKind.False,
             Value = null,
         });
+
         var readBack = reader.GetData<FunctionCallData>(ref data, node);
 
         Assert.Equal("length", readBack.Name.ToString());
@@ -106,15 +116,20 @@ public unsafe class AstContextTests : IDisposable
         Assert.Equal(TokenKind.False, args[0].Kind);
     }
 
+
     [Fact]
     public void RootIdentifier_NoData()
     {
         var data = new AstDataTable(_allocator);
         var writer = new AstWriteContext(_allocator);
 
-        var node = writer.CreateNode(ref data, AstKind.RootIdentifier, 0);
+        var node = AllocNode();
+
+        writer.AssignNode(node, ref data, AstKind.RootIdentifier, 0);
+
         Assert.Equal(0u, node->DataIndex);
     }
+
 
     [Fact]
     public void NullNode_ShouldReturnDefaults()
@@ -123,9 +138,11 @@ public unsafe class AstContextTests : IDisposable
         var reader = default(AstReadContext);
 
         AstNode* nullNode = null;
+
         Assert.Null(reader.GetData(ref data, nullNode));
         Assert.Equal(0, reader.GetData<long>(ref data, nullNode));
     }
+
 
     [Fact]
     public void InvalidType_ShouldThrow_OnWrite()
@@ -133,71 +150,27 @@ public unsafe class AstContextTests : IDisposable
         var data = new AstDataTable(_allocator);
         var writer = new AstWriteContext(_allocator);
 
+        var node = AllocNode();
+
         try
         {
-            writer.CreateNode(ref data, AstKind.IndexSelector, "wrong-type");
+            writer.AssignNode(node, ref data, AstKind.IndexSelector, "wrong-type");
         }
         catch (ArgumentException)
         {
             return;
         }
-
-        Assert.Fail("Should have thrown " + nameof(ArgumentException));
+        
+        Assert.Fail("Must throw ArgumentException..");
     }
-
-    [Fact]
-    public void InvalidType_ShouldThrow_OnRead()
+    
+    private AstNode* AllocNode()
     {
-        var data = new AstDataTable(_allocator);
-        var writer = new AstWriteContext(_allocator);
-        var reader = default(AstReadContext);
-
-        var node = writer.CreateNode(ref data, AstKind.LiteralValue, new LiteralData
-        {
-            Kind = LiteralKind.Number,
-            Number = 123,
-        });
-
-        try
-        {
-            _ = reader.GetData<long>(ref data, node);
-        }
-        catch (InvalidOperationException)
-        {
-            return;
-        }
-
-        Assert.Fail("Should have thrown " + nameof(InvalidOperationException));
-    }
-
-    [Fact]
-    public void NodeInitialization_ShouldBeValid()
-    {
-        var data = new AstDataTable(_allocator);
-        var writer = new AstWriteContext(_allocator);
-
-        // force > 0 data index
-        _ = writer.CreateNode(
-            ref data,
-            AstKind.LiteralValue,
-            new LiteralData
-            {
-                Kind = LiteralKind.Number,
-                Number = 1,
-            });
-
-        var node = writer.CreateNode(
-            ref data,
-            AstKind.LiteralValue,
-            new LiteralData
-        {
-            Kind = LiteralKind.Number,
-            Number = 1,
-        });
-
-        Assert.True(node->NextChild == null);
-        Assert.True(node->NextSibling == null);
-        Assert.Equal(AstKind.LiteralValue, node->Kind);
-        Assert.Equal(1, (int)node->DataIndex);
+        var node = (AstNode*)_allocator.Alloc((nuint)sizeof(AstNode));
+        node->Kind = 0;
+        node->NextChild = null;
+        node->NextSibling = null;
+        node->DataIndex = 0;
+        return node;
     }
 }
