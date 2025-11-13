@@ -32,6 +32,10 @@ public unsafe struct ArenaSegment
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool TryAlloc(nuint size, nuint align, out void* ptr)
     {
+#if DEBUG
+        Debug.Assert(HeadCanary == Canary, "Arena segment head canary corrupted");
+        Debug.Assert(TailCanary == Canary, "Arena segment tail canary corrupted");
+#endif
         if (align == 0)
         {
             align = (nuint)IntPtr.Size;
