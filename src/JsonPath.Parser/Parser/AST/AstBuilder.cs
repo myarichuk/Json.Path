@@ -1,3 +1,4 @@
+using System;
 using JsonPath.Parser.Helpers;
 
 namespace JsonPath.Parser;
@@ -91,6 +92,11 @@ public unsafe ref struct AstBuilder
     /// </summary>
     public AstHandle AddSiblingAfter(AstNode* current, AstKind kind)
     {
+        if (current == null)
+        {
+            throw new ArgumentNullException(nameof(current), "Cannot add a sibling after a null node pointer.");
+        }
+
         var sib = AllocNode(kind);
 
         // Insert after current node
