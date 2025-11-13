@@ -1,3 +1,4 @@
+using System;
 using JsonPath.Parser;
 using Xunit;
 
@@ -61,6 +62,27 @@ public unsafe class AstBuilderTests
         Assert.True(third->NextSibling == fourth.Ptr);
         Assert.Equal(AstKind.FilterExpression, fourth.Ptr->Kind);
         Assert.True(fourth.Ptr->NextSibling == null);
+    }
+
+    [Fact]
+    public void AddSiblingAfterNullPointerThrows()
+    {
+        using var arena = new ArenaAllocator();
+        var builder = new AstBuilder(arena);
+
+        ArgumentNullException? exception = null;
+
+        try
+        {
+            builder.AddSiblingAfter((AstNode*)0, AstKind.FilterExpression);
+        }
+        catch (ArgumentNullException ex)
+        {
+            exception = ex;
+        }
+
+        Assert.NotNull(exception);
+        Assert.Equal("current", exception!.ParamName);
     }
 
     [Fact]
