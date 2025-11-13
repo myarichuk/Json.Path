@@ -1,3 +1,4 @@
+using System;
 using JsonPath.Parser.Helpers;
 
 namespace JsonPath.Parser;
