@@ -33,7 +33,8 @@ public unsafe ref struct AstExpressionBuilder(
     /// </summary>
     public AstExpressionBuilder EndExpression()
     {
-        _builder.End();
+        var ended = _builder.End();
+        _current = ended;
         return this;
     }
 

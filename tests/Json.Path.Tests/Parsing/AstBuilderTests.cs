@@ -54,4 +54,24 @@ public unsafe class AstBuilderTests
         Assert.True(third->NextSibling == null);
     }
 
+    [Fact]
+    public void EndExpressionTracksLastHandle()
+    {
+        using var arena = new ArenaAllocator();
+        var builder = new AstBuilder(arena);
+        var data = new AstDataTable(arena);
+        var expr = new AstExpressionBuilder(arena, builder, data, new AstHandle(builder.Root));
+
+        expr.BeginExpression(AstKind.ChildSegment)
+                .ChildNameSelector("foo")
+            .EndExpression()
+            .SiblingExpression(AstKind.ChildSegment);
+
+        var first = builder.Root->NextChild;
+        Assert.Equal(AstKind.ChildSegment, first->Kind);
+
+        var sibling = first->NextSibling;
+        Assert.True(sibling != null);
+        Assert.Equal(AstKind.ChildSegment, sibling->Kind);
+    }
 }
