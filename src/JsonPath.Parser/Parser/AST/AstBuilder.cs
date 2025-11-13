@@ -85,6 +85,23 @@ public unsafe ref struct AstBuilder
     }
 
     /// <summary>
+    /// Add a sibling next to the specified node handle.
+    /// </summary>
+    public AstHandle AddSibling(AstHandle node, AstKind kind)
+    {
+        if (node.IsNull)
+        {
+            return AddChild(kind);
+        }
+
+        var sib = AllocNode(kind);
+        sib->NextSibling = node.Ptr->NextSibling;
+        node.Ptr->NextSibling = sib;
+
+        return new AstHandle(sib);
+    }
+
+    /// <summary>
     /// Attaches a child node by walking to the last sibling.
     /// </summary>
     private static void AttachChild(AstNode* parent, AstNode* child)

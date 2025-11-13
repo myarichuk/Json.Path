@@ -22,7 +22,7 @@ public unsafe class AstContextTests : IDisposable
         var node = AllocNode();
         var name = "foo";
 
-        writer.AssignNode(node, ref data, AstKind.NameSelector, name);
+        writer.AssignNameSelector(node, ref data, name);
 
         Assert.Equal(AstKind.NameSelector, node->Kind);
 
@@ -40,7 +40,7 @@ public unsafe class AstContextTests : IDisposable
         var literal = new LiteralData { Kind = LiteralKind.Number, Number = 42 };
 
         var node = AllocNode();
-        writer.AssignNode(node, ref data, AstKind.LiteralValue, literal);
+        writer.AssignLiteral(node, ref data, literal);
 
         var result = reader.GetData<LiteralData>(ref data, node);
         Assert.Equal(literal, result);
@@ -56,7 +56,7 @@ public unsafe class AstContextTests : IDisposable
         const long index = 5;
 
         var node = AllocNode();
-        writer.AssignNode(node, ref data, AstKind.IndexSelector, index);
+        writer.AssignIndexSelector(node, ref data, index);
 
         var readBack = reader.GetData<long>(ref data, node);
         Assert.Equal(index, readBack);
@@ -79,7 +79,7 @@ public unsafe class AstContextTests : IDisposable
         };
 
         var node = AllocNode();
-        writer.AssignNode(node, ref data, AstKind.SliceSelector, slice);
+        writer.AssignSliceSelector(node, ref data, slice);
 
         var readBack = reader.GetData<SliceData>(ref data, node);
         Assert.Equal(slice, readBack);
@@ -96,7 +96,7 @@ public unsafe class AstContextTests : IDisposable
         var fn = FunctionCallData.From("length", _allocator);
 
         var node = AllocNode();
-        writer.AssignNode(node, ref data, AstKind.FunctionCall, fn);
+        writer.AssignFunctionCall(node, ref data, fn);
 
         data.AddFunctionArgument(node->DataIndex, new FunctionArgument
         {
@@ -125,7 +125,7 @@ public unsafe class AstContextTests : IDisposable
 
         var node = AllocNode();
 
-        writer.AssignNode(node, ref data, AstKind.RootIdentifier, 0);
+        writer.AssignNode(node, AstKind.RootIdentifier);
 
         Assert.Equal(0u, node->DataIndex);
     }
@@ -144,26 +144,6 @@ public unsafe class AstContextTests : IDisposable
     }
 
 
-    [Fact]
-    public void InvalidType_ShouldThrow_OnWrite()
-    {
-        var data = new AstDataTable(_allocator);
-        var writer = new AstWriteContext(_allocator);
-
-        var node = AllocNode();
-
-        try
-        {
-            writer.AssignNode(node, ref data, AstKind.IndexSelector, "wrong-type");
-        }
-        catch (ArgumentException)
-        {
-            return;
-        }
-        
-        Assert.Fail("Must throw ArgumentException..");
-    }
-    
     private AstNode* AllocNode()
     {
         var node = (AstNode*)_allocator.Alloc((nuint)sizeof(AstNode));

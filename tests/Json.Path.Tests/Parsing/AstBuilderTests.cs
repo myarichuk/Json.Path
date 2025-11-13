@@ -13,8 +13,8 @@ public unsafe class AstBuilderTests
         var data = new AstDataTable(arena);
         var expr = new AstExpressionBuilder(arena, builder, data, new AstHandle(builder.Root));
 
-        expr.BeginExpression(AstKind.ChildSegment, 123)
-                .BeginExpression(AstKind.NameSelector, "AAA")
+        expr.BeginExpression(AstKind.ChildSegment)
+                .BeginNameSelector("AAA")
                 .EndExpression()
             .EndExpression();
 
@@ -29,7 +29,7 @@ public unsafe class AstBuilderTests
         Assert.True(nested != null);
         Assert.Equal(AstKind.NameSelector, nested->Kind);
     }
-    
+
     [Fact]
     public void AddSiblingCreatesCorrectSiblingChain()
     {
@@ -38,9 +38,9 @@ public unsafe class AstBuilderTests
         var data = new AstDataTable(arena);
         var expr = new AstExpressionBuilder(arena, builder, data, new AstHandle(builder.Root));
 
-        expr.ChildExpression(AstKind.ChildSegment, 0)
-                .SiblingExpression(AstKind.NameSelector, "AAA")
-                .SiblingExpression(AstKind.WildcardSelector, 0);
+        expr.ChildExpression(AstKind.ChildSegment)
+                .SiblingNameSelector("AAA")
+                .SiblingExpression(AstKind.WildcardSelector);
 
         var first = builder.Root->NextChild;
         Assert.Equal(AstKind.ChildSegment, first->Kind);
@@ -53,5 +53,5 @@ public unsafe class AstBuilderTests
 
         Assert.True(third->NextSibling == null);
     }
-    
+
 }
