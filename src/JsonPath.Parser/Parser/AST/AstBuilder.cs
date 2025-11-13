@@ -51,12 +51,18 @@ public unsafe ref struct AstBuilder
     /// <summary>
     /// Ends the current node scope.
     /// </summary>
-    public void End()
+    /// <returns>
+    /// A handle to the node whose scope was closed, or the root handle when already at the root scope.
+    /// </returns>
+    public AstHandle End()
     {
-        if (_stack.Count > 1)
+        if (_stack.Count <= 1)
         {
-            _stack.Pop();
+            return new AstHandle(_stack.Peek());
         }
+
+        var node = _stack.Pop();
+        return new AstHandle(node);
     }
 
     /// <summary>
@@ -90,6 +96,23 @@ public unsafe ref struct AstBuilder
         // Insert after current node
         sib->NextSibling = current->NextSibling;
         current->NextSibling = sib;
+
+        return new AstHandle(sib);
+    }
+
+    /// <summary>
+    /// Add a sibling next to the specified node handle.
+    /// </summary>
+    public AstHandle AddSibling(AstHandle node, AstKind kind)
+    {
+        if (node.IsNull)
+        {
+            return AddChild(kind);
+        }
+
+        var sib = AllocNode(kind);
+        sib->NextSibling = node.Ptr->NextSibling;
+        node.Ptr->NextSibling = sib;
 
         return new AstHandle(sib);
     }

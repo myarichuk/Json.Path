@@ -1,4 +1,4 @@
-using System.Runtime.CompilerServices;
+using System;
 using JsonPath.Parser.Helpers;
 
 namespace JsonPath.Parser;
@@ -9,61 +9,69 @@ namespace JsonPath.Parser;
 public readonly unsafe ref struct AstWriteContext(ArenaAllocator allocator)
 {
     /// <summary>
-    /// Populates an already-allocated AST node with metadata from the provided payload.
+    /// Assigns structural node metadata for kinds that do not carry payloads.
     /// </summary>
-    /// <typeparam name="T">Type of payload data.</typeparam>
-    /// <param name="node">The node to populate. Must be allocated by the builder.</param>
-    /// <param name="dataTable">The metadata table to write into.</param>
-    /// <param name="kind">The AST kind.</param>
-    /// <param name="data">The payload.</param>
-    public void AssignNode<T>(AstNode* node, ref AstDataTable dataTable, AstKind kind, in T data)
+    public void AssignNode(AstNode* node, AstKind kind)
     {
         node->Kind = kind;
-        node->DataIndex = kind switch
-        {
-            AstKind.NameSelector => AddName(ref dataTable, data),
-            AstKind.LiteralValue => AddLiteral(ref dataTable, data),
-            AstKind.IndexSelector => AddIndex(ref dataTable, data),
-            AstKind.SliceSelector => AddSlice(ref dataTable, data),
-            AstKind.FunctionCall => AddFunction(ref dataTable, data),
-            _ => 0u,
-        };
+        node->DataIndex = 0;
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private uint AddName<T>(ref AstDataTable dataTable, in T data) => data switch
+    /// <summary>
+    /// Assigns name-selector metadata using a managed string.
+    /// </summary>
+    public void AssignNameSelector(AstNode* node, ref AstDataTable dataTable, string name)
     {
-        string s => dataTable.AddName(ArenaString.Clone(s, allocator)),
-        ArenaString str => dataTable.AddName(str),
-        _ => throw new ArgumentException(
-            $"Invalid data type for NameSelector: {typeof(T)}"),
-    };
+        if (name == null)
+        {
+            throw new ArgumentNullException(nameof(name));
+        }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private uint AddLiteral<T>(ref AstDataTable dataTable, in T data) =>
-        data is LiteralData literal
-            ? dataTable.AddLiteral(literal)
-            : throw new ArgumentException(
-                $"Invalid data type for LiteralValue: {typeof(T)}");
+        AssignNameSelector(node, ref dataTable, ArenaString.Clone(name, allocator));
+    }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private uint AddIndex<T>(ref AstDataTable dataTable, in T data) =>
-        data is long index
-            ? dataTable.AddIndex(index)
-            : throw new ArgumentException(
-                $"Invalid data type for IndexSelector: {typeof(T)}");
+    /// <summary>
+    /// Assigns name-selector metadata using an arena-backed string.
+    /// </summary>
+    public void AssignNameSelector(AstNode* node, ref AstDataTable dataTable, in ArenaString name)
+    {
+        node->Kind = AstKind.NameSelector;
+        node->DataIndex = dataTable.AddName(name);
+    }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private uint AddSlice<T>(ref AstDataTable dataTable, in T data) =>
-        data is SliceData slice
-            ? dataTable.AddSlice(slice)
-            : throw new ArgumentException(
-                $"Invalid data type for SliceSelector: {typeof(T)}");
+    /// <summary>
+    /// Assigns literal metadata to a node.
+    /// </summary>
+    public void AssignLiteral(AstNode* node, ref AstDataTable dataTable, in LiteralData literal)
+    {
+        node->Kind = AstKind.LiteralValue;
+        node->DataIndex = dataTable.AddLiteral(literal);
+    }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private uint AddFunction<T>(ref AstDataTable dataTable, in T data) =>
-        data is FunctionCallData fn
-            ? dataTable.AddFunction(fn)
-            : throw new ArgumentException(
-                $"Invalid data type for FunctionCall: {typeof(T)}");
+    /// <summary>
+    /// Assigns an index selector payload to a node.
+    /// </summary>
+    public void AssignIndexSelector(AstNode* node, ref AstDataTable dataTable, long index)
+    {
+        node->Kind = AstKind.IndexSelector;
+        node->DataIndex = dataTable.AddIndex(index);
+    }
+
+    /// <summary>
+    /// Assigns slice selector payload to a node.
+    /// </summary>
+    public void AssignSliceSelector(AstNode* node, ref AstDataTable dataTable, in SliceData slice)
+    {
+        node->Kind = AstKind.SliceSelector;
+        node->DataIndex = dataTable.AddSlice(slice);
+    }
+
+    /// <summary>
+    /// Assigns function metadata to a node.
+    /// </summary>
+    public void AssignFunctionCall(AstNode* node, ref AstDataTable dataTable, in FunctionCallData fn)
+    {
+        node->Kind = AstKind.FunctionCall;
+        node->DataIndex = dataTable.AddFunction(fn);
+    }
 }
