@@ -46,10 +46,17 @@ public unsafe struct ArenaList<T>
     public ArenaList(ArenaAllocator arena, int initialCapacity = 16)
     {
         _arena = arena;
+        if (initialCapacity <= 0)
+        {
+            initialCapacity = 1;
+        }
+
         _header = (ArenaListHeader*)arena.Alloc((nuint)sizeof(ArenaListHeader), align: (nuint)IntPtr.Size);
         _header->Count = 0;
         _header->Capacity = initialCapacity;
-        _header->Data = (T*)arena.Alloc((nuint)initialCapacity * (nuint)sizeof(T));
+        _header->Data = (T*)arena.Alloc(
+            (nuint)initialCapacity * (nuint)sizeof(T),
+            align: (nuint)UnsafeHelpers.AlignOf<T>());
     }
 
     /// <summary>
@@ -92,8 +99,15 @@ public unsafe struct ArenaList<T>
 
     private void Grow()
     {
+        if (_header->Capacity > int.MaxValue / 2)
+        {
+            throw new InvalidOperationException("ArenaList capacity overflow.");
+        }
+
         var newCap = (nuint)_header->Capacity * 2;
-        var newPtr = _arena.Alloc(newCap * (nuint)sizeof(T));
+        var newPtr = _arena.Alloc(
+            newCap * (nuint)sizeof(T),
+            align: (nuint)UnsafeHelpers.AlignOf<T>());
         Unsafe.CopyBlockUnaligned(newPtr, _header->Data, (uint)(_header->Count * sizeof(T)));
         _header->Data = newPtr;
         _header->Capacity = (int)newCap;

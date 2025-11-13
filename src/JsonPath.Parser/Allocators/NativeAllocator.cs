@@ -236,6 +236,12 @@ public static unsafe class NativeAllocator
         var reservedSize = info.ReservedSize;
         var expectedBackend = info.Backend;
 #else
+#if !DEBUG
+        if (backend is NativeAllocatorBackend.PlatformInvoke && IsPointerFreed(userPtr))
+        {
+            throw new InvalidOperationException("Double free or foreign pointer detected.");
+        }
+#endif
         nint rawPtr = 0;
         nuint reservedSize = 0;
         NativeAllocatorBackend expectedBackend = backend;
@@ -334,6 +340,40 @@ public static unsafe class NativeAllocator
         var remainder = value % alignment;
         return value - remainder;
     }
+
+#if !DEBUG
+    private static bool IsPointerFreed(void* userPtr)
+    {
+        if (IsWindowsPlatform())
+        {
+            var querySize = (nuint)Unsafe.SizeOf<Native.MEMORY_BASIC_INFORMATION>();
+            if (Native.VirtualQuery((nint)userPtr, out var info, querySize) == 0)
+            {
+                ThrowLastError("VirtualQuery failed");
+            }
+
+            return info.State == Native.MEM_FREE;
+        }
+
+        var pageSize = PageSize;
+        var pageBase = (nint)AlignDown((nuint)userPtr, pageSize);
+
+        Span<byte> vec = stackalloc byte[1];
+        if (Native.mincore((IntPtr)pageBase, pageSize, ref MemoryMarshal.GetReference(vec)) == 0)
+        {
+            return false;
+        }
+
+        var errno = Marshal.GetLastWin32Error();
+        if (errno == Native.ENOMEM)
+        {
+            return true;
+        }
+
+        ThrowLastError("mincore failed");
+        return true;
+    }
+#endif
 
 #if DEBUG
     private static void ApplyGuard(void* basePtr, nuint guardPrefix, nuint guardSuffix, nuint total)
@@ -480,12 +520,13 @@ internal static partial class Native
     public const string Kernel32 = "kernel32.dll";
 
     // Win32 constants
-    public const uint MEM_COMMIT = 0x1000, MEM_RESERVE = 0x2000, MEM_RELEASE = 0x8000;
+    public const uint MEM_COMMIT = 0x1000, MEM_RESERVE = 0x2000, MEM_RELEASE = 0x8000, MEM_FREE = 0x10000;
     public const uint PAGE_READWRITE = 0x04, PAGE_READONLY = 0x02, PAGE_NOACCESS = 0x01;
 
     // POSIX constants
     public const int PROT_NONE = 0, PROT_READ = 1, PROT_WRITE = 2;
     public const int MAP_PRIVATE = 2, MAP_ANONYMOUS = 0x20;
+    public const int ENOMEM = 12;
 
 #if NET7_0_OR_GREATER
     [LibraryImport(Kernel32, SetLastError = true)]
@@ -538,6 +579,9 @@ internal static partial class Native
 
     [LibraryImport("libc", SetLastError = true)]
     public static partial int mprotect(IntPtr addr, nuint len, int prot);
+
+    [LibraryImport("libc", SetLastError = true)]
+    public static partial int mincore(IntPtr addr, nuint length, ref byte vec);
 #else
     [DllImport("libc", SetLastError = true, EntryPoint = "mmap")]
     public static extern IntPtr mmap(IntPtr addr, nuint length, int prot, int flags, int fd, long offset);
@@ -547,5 +591,8 @@ internal static partial class Native
 
     [DllImport("libc", SetLastError = true, EntryPoint = "mprotect")]
     public static extern int mprotect(IntPtr addr, nuint len, int prot);
+
+    [DllImport("libc", SetLastError = true, EntryPoint = "mincore")]
+    public static extern int mincore(IntPtr addr, nuint length, ref byte vec);
 #endif
 }
