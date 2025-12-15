@@ -1,3 +1,5 @@
+using System.Runtime.CompilerServices;
+
 namespace JsonPath.Parser.Lexer;
 
 /// <summary>
@@ -43,7 +45,7 @@ public class NumberScanner: ISubScanner
             }
 
             // do not allow Ⅻ or ٣, only ascii numbers
-            if (char.IsDigit(@char))
+            if (IsAsciiDigit(@char))
             {
                 scanned++;
                 hasDigits = true;
@@ -56,9 +58,7 @@ public class NumberScanner: ISubScanner
                 int expStart = scanned;
                 scanned++; // consume 'e' or 'E'
 
-                if (scanned < remaining.Length &&
-                    (remaining[scanned] == '+' ||
-                     remaining[scanned] == '-'))
+                if (scanned < remaining.Length && IsSign(remaining[scanned]))
                 {
                     scanned++;
                 }
@@ -96,4 +96,10 @@ public class NumberScanner: ISubScanner
 
         return false;
     }
+    
+    static bool IsSign(char c) => c is '+' or '-';
+    
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    static bool IsAsciiDigit(char c) => (uint)(c - '0') <= 9;
+
 }

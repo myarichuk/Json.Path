@@ -127,6 +127,8 @@ public unsafe struct ArenaList<T>
         _header->Count = 0;
     }
 
+    public T* AsPtr => (T*)_header->Data;
+    
     /// <summary>
     /// Provides a span view of the stored elements.
     /// </summary>

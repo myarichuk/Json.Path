@@ -2,114 +2,113 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace JsonPath.Parser.Lexer
+namespace JsonPath.Parser.Lexer;
+
+[AttributeUsage(AttributeTargets.Field)]
+public class TokenStringAttribute : Attribute
 {
-    [AttributeUsage(AttributeTargets.Field)]
-    public class TokenStringAttribute : Attribute
+    public string Token { get; init; }
+
+    public TokenStringAttribute(string token)
     {
-        public string Token { get; init; }
-
-        public TokenStringAttribute(string token)
-        {
-            Token = token;
-        }
+        Token = token;
     }
+}
 
-    public enum TokenKind : byte
-    {
-        Unknown,
+public enum TokenKind : byte
+{
+    Eof,
 
-        Identifier,
+    Identifier,
 
-        Number,
+    Number,
 
-        String,
+    String,
 
-        [TokenString("$")]
-        Root,
+    [TokenString("$")]
+    Root,
 
-        [TokenString("@")]
-        Current,
+    [TokenString("@")]
+    Current,
 
-        [TokenString("..")]
-        DotDot,
+    [TokenString("..")]
+    DotDot,
 
-        [TokenString(".")]
-        Dot,
+    [TokenString(".")]
+    Dot,
 
-        [TokenString("[")]
-        LBracket,
+    [TokenString("[")]
+    LBracket,
 
-        [TokenString("]")]
-        RBracket,
+    [TokenString("]")]
+    RBracket,
 
-        [TokenString("(")]
-        LParen,
+    [TokenString("(")]
+    LParen,
 
-        [TokenString(")")]
-        RParen,
+    [TokenString(")")]
+    RParen,
 
-        [TokenString(":")]
-        Colon,
+    [TokenString(":")]
+    Colon,
 
-        [TokenString(",")]
-        Comma,
+    [TokenString(",")]
+    Comma,
 
-        [TokenString("?")]
-        Question,
+    [TokenString("?")]
+    Question,
 
-        [TokenString("*")]
-        Star,
+    [TokenString("*")]
+    Star,
 
-        [TokenString("~=")]
-        RegexMatch,
+    [TokenString("~=")]
+    RegexMatch,
 
-        [TokenString("==")]
-        Eq,
+    [TokenString("==")]
+    Eq,
 
-        [TokenString("!=")]
-        Ne,
+    [TokenString("!=")]
+    Ne,
 
-        [TokenString("<=")]
-        Le,
+    [TokenString("<=")]
+    Le,
 
-        [TokenString("<")]
-        Lt,
+    [TokenString("<")]
+    Lt,
 
-        [TokenString(">=")]
-        Ge,
+    [TokenString(">=")]
+    Ge,
 
-        [TokenString(">")]
-        Gt,
+    [TokenString(">")]
+    Gt,
 
-        [TokenString("&&")]
-        And,
+    [TokenString("&&")]
+    And,
 
-        [TokenString("||")]
-        Or,
+    [TokenString("||")]
+    Or,
 
-        [TokenString("!")]
-        Not,
+    [TokenString("!")]
+    Not,
 
-        [TokenString("+")]
-        Add,
+    [TokenString("+")]
+    Add,
 
-        [TokenString("-")]
-        Sub,
+    [TokenString("-")]
+    Sub,
 
-        [TokenString("/")]
-        Div,
+    [TokenString("/")]
+    Div,
 
-        [TokenString("%")]
-        Mod,
+    [TokenString("%")]
+    Mod,
 
-        [TokenString("true")]
-        True,
+    [TokenString("true")]
+    True,
 
-        [TokenString("false")]
-        False,
+    [TokenString("false")]
+    False,
 
-        [TokenString("null")]
-        Null,
-    }
+    [TokenString("null")]
+    Null,
 }
