@@ -1,4 +1,7 @@
 using JsonPath.Parser;
+using JsonPath.Parser.Allocators;
+using JsonPath.Parser.Diagnostics;
+using JsonPath.Parser.Helpers;
 using JsonPath.Parser.Lexer;
 using Xunit;
 
@@ -9,16 +12,23 @@ public class NumberScannerTests
     private static bool TryScan(string input, out Token token)
     {
         var ctx = new ScanContext(input.AsSpan());
+        using var allocator = new ArenaAllocator();
+        var errors = new ArenaList<JsonPathError>(allocator);
         var scanner = new NumberScanner();
-        return scanner.TryScan(ref ctx, out token);
+        var result = scanner.TryScan(ref ctx, allocator, errors, out token);
+        Assert.True(errors.IsEmpty);
+        return result;
     }
 
     private static bool TryScan(string input, out Token token, out int consumed)
     {
         var ctx = new ScanContext(input.AsSpan());
+        using var allocator = new ArenaAllocator();
+        var errors = new ArenaList<JsonPathError>(allocator);
         var scanner = new NumberScanner();
-        var result = scanner.TryScan(ref ctx, out token);
+        var result = scanner.TryScan(ref ctx, allocator, errors, out token);
         consumed = ctx.Position;
+        Assert.True(errors.IsEmpty);
         return result;
     }
 
@@ -55,11 +65,14 @@ public class NumberScannerTests
     public void Updates_Context_Position_After_Scan()
     {
         var ctx = new ScanContext("123abc".AsSpan());
+        using var allocator = new ArenaAllocator();
+        var errors = new ArenaList<JsonPathError>(allocator);
         var scanner = new NumberScanner();
 
-        var success = scanner.TryScan(ref ctx, out var token);
+        var success = scanner.TryScan(ref ctx, allocator, errors, out var token);
 
         Assert.True(success);
+        Assert.True(errors.IsEmpty);
         Assert.Equal(3, ctx.Position); // consumed 3 chars
         Assert.Equal(3, token.Length);
     }
@@ -68,11 +81,14 @@ public class NumberScannerTests
     public void Handles_Float_With_Trailing_Text()
     {
         var ctx = new ScanContext("3.14foo".AsSpan());
+        using var allocator = new ArenaAllocator();
+        var errors = new ArenaList<JsonPathError>(allocator);
         var scanner = new NumberScanner();
 
-        var success = scanner.TryScan(ref ctx, out var token);
+        var success = scanner.TryScan(ref ctx, allocator, errors, out var token);
 
         Assert.True(success);
+        Assert.True(errors.IsEmpty);
         Assert.Equal(4, token.Length);
         Assert.Equal(4, ctx.Position);
     }

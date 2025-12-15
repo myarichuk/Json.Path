@@ -1,3 +1,7 @@
+using JsonPath.Parser.Allocators;
+using JsonPath.Parser.Diagnostics;
+using JsonPath.Parser.Helpers;
+
 namespace JsonPath.Parser.Lexer;
 
 /// <summary>
@@ -9,7 +13,13 @@ public interface ISubScanner
     /// Attempts to consume a token from the current position in the supplied context.
     /// </summary>
     /// <param name="ctx">The scanning context.</param>
+    /// <param name="allocator">Allocator used for backing diagnostic collections.</param>
+    /// <param name="errors">Collection populated when lexer diagnostics are emitted.</param>
     /// <param name="token">When successful, receives the token that was produced.</param>
     /// <returns><see langword="true"/> if a token was recognized; otherwise, <see langword="false"/>.</returns>
-    bool TryScan(ref ScanContext ctx, out Token token);
+    bool TryScan(
+        ref ScanContext ctx,
+        ArenaAllocator allocator,
+        ArenaList<JsonPathError> errors,
+        out Token token);
 }

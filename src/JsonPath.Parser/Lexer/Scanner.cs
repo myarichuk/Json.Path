@@ -53,7 +53,7 @@ public readonly ref struct Scanner
             var success = false;
             foreach (var scanner in _subScanners)
             {
-                if (scanner.TryScan(ref ctx, out Token token))
+                if (scanner.TryScan(ref ctx, _allocator, errors, out Token token))
                 {
                     success = true;
                     tokens.Add(token);
@@ -63,14 +63,17 @@ public readonly ref struct Scanner
 
             if (!success)
             {
-                errors.Add(new JsonPathError(
-                    DiagnosticPhase.Lexer,
-                    "scanner",
-                    "Couldn't recognize next token",
-                    new SourceSpan(
-                        ctx.Position,
-                        ctx.RemainingLength),
-                    _allocator));
+                if (errors.IsEmpty)
+                {
+                    errors.Add(new JsonPathError(
+                        DiagnosticPhase.Lexer,
+                        "scanner",
+                        "Couldn't recognize next token",
+                        new SourceSpan(
+                            ctx.Position,
+                            ctx.RemainingLength),
+                        _allocator));
+                }
                 break;
             }
         }
