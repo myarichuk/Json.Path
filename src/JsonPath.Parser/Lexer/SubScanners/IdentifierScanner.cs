@@ -1,3 +1,7 @@
+using JsonPath.Parser.Allocators;
+using JsonPath.Parser.Diagnostics;
+using JsonPath.Parser.Helpers;
+
 namespace JsonPath.Parser.Lexer;
 
 /// <summary>
@@ -6,7 +10,11 @@ namespace JsonPath.Parser.Lexer;
 public class IdentifierScanner : ISubScanner
 {
     /// <inheritdoc />
-    public bool TryScan(ref ScanContext ctx, out Token token)
+    public bool TryScan(
+        ref ScanContext ctx,
+        ArenaAllocator allocator,
+        ArenaList<JsonPathError> errors,
+        out Token token)
     {
         token = default;
 

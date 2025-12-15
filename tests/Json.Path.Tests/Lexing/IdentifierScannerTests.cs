@@ -1,4 +1,7 @@
 using JsonPath.Parser;
+using JsonPath.Parser.Allocators;
+using JsonPath.Parser.Diagnostics;
+using JsonPath.Parser.Helpers;
 using JsonPath.Parser.Lexer;
 using Xunit;
 
@@ -17,15 +20,18 @@ public class IdentifierScannerTests
     public void Should_Scan_ValidIdentifier(string input, int preConsume, string expected)
     {
         var ctx = new ScanContext(input.AsSpan());
+        using var allocator = new ArenaAllocator();
+        var errors = new ArenaList<JsonPathError>(allocator);
         var scanner = new IdentifierScanner();
         if (preConsume > 0)
         {
             ctx.Consume(preConsume);
         }
 
-        var result = scanner.TryScan(ref ctx, out var token);
+        var result = scanner.TryScan(ref ctx, allocator, errors, out var token);
 
         Assert.True(result);
+        Assert.True(errors.IsEmpty);
         Assert.Equal(TokenKind.Identifier, token.Kind);
         Assert.Equal(preConsume, token.Start);
         Assert.Equal(expected.Length, token.Length);
@@ -38,11 +44,14 @@ public class IdentifierScannerTests
     {
         var input = "foo-bar";
         var ctx = new ScanContext(input.AsSpan());
+        using var allocator = new ArenaAllocator();
+        var errors = new ArenaList<JsonPathError>(allocator);
         var scanner = new IdentifierScanner();
 
-        var result = scanner.TryScan(ref ctx, out var token);
+        var result = scanner.TryScan(ref ctx, allocator, errors, out var token);
 
         Assert.True(result);
+        Assert.True(errors.IsEmpty);
         Assert.Equal(0, token.Start);
         Assert.Equal(3, token.Length);
         Assert.Equal("foo", new string(token.SliceFrom(input)));
@@ -57,11 +66,14 @@ public class IdentifierScannerTests
     public void Should_Reject_WhenFirstCharInvalid(string input)
     {
         var ctx = new ScanContext(input.AsSpan());
+        using var allocator = new ArenaAllocator();
+        var errors = new ArenaList<JsonPathError>(allocator);
         var scanner = new IdentifierScanner();
 
-        var result = scanner.TryScan(ref ctx, out var token);
+        var result = scanner.TryScan(ref ctx, allocator, errors, out var token);
 
         Assert.False(result);
+        Assert.True(errors.IsEmpty);
         Assert.Equal(default, token);
         Assert.Equal(0, ctx.Position);
     }
@@ -71,9 +83,12 @@ public class IdentifierScannerTests
     {
         var input = "JsonPath2";
         var ctx = new ScanContext(input.AsSpan());
+        using var allocator = new ArenaAllocator();
+        var errors = new ArenaList<JsonPathError>(allocator);
         var scanner = new IdentifierScanner();
 
-        Assert.True(scanner.TryScan(ref ctx, out var token));
+        Assert.True(scanner.TryScan(ref ctx, allocator, errors, out var token));
+        Assert.True(errors.IsEmpty);
         Assert.Equal(TokenKind.Identifier, token.Kind);
         Assert.Equal(input.Length, token.Length);
         Assert.Equal(input.Length, ctx.Position);

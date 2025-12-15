@@ -1,4 +1,7 @@
 using System.Runtime.CompilerServices;
+using JsonPath.Parser.Allocators;
+using JsonPath.Parser.Diagnostics;
+using JsonPath.Parser.Helpers;
 
 namespace JsonPath.Parser.Lexer;
 
@@ -9,16 +12,30 @@ public class StringScanner: ISubScanner
 {
     private const string EscapedDoubleQuote = "\\\"";
     private const string EscapedSingleQuote = "\\'";
-    private static readonly string[] EscapeCharacters = [EscapedDoubleQuote];
+    private static readonly string[] EscapeCharacters = [EscapedDoubleQuote, EscapedSingleQuote];
+    private static readonly string[] DoubleQuoteEscapes = [EscapedDoubleQuote];
 
     /// <inheritdoc />
-    public bool TryScan(ref ScanContext ctx, out Token token)
+    public bool TryScan(
+        ref ScanContext ctx,
+        ArenaAllocator allocator,
+        ArenaList<JsonPathError> errors,
+        out Token token)
     {
         token = default;
 
         // only one character can't be string!
         if (ctx.RemainingLength <= 1)
         {
+            if (ctx.Current == '\'' || ctx.Current == '"')
+            {
+                errors.Add(new JsonPathError(
+                    DiagnosticPhase.Lexer,
+                    "string",
+                    "Unterminated string literal",
+                    new SourceSpan(ctx.Position, ctx.RemainingLength),
+                    allocator));
+            }
             return false;
         }
 
@@ -55,31 +72,38 @@ public class StringScanner: ISubScanner
         var hasFoundEnd = false;
         do
         {
+            var handledEscape = false;
             if (relevantInput[scanned..].Length >= 2)
             {
-                var maybeEscape =
-                    relevantInput.Slice(scanned, 2);
+                var maybeEscape = relevantInput.Slice(scanned, 2);
 
-                if (maybeEscape.SequenceEqual(EscapedDoubleQuote))
-                {
-                    scanned += 2;
-                    continue;
-                }
+                var applicableEscapes = isSingleQuote
+                    ? EscapeCharacters
+                    : DoubleQuoteEscapes;
 
-                if (isSingleQuote && maybeEscape.SequenceEqual(EscapedSingleQuote))
+                foreach (var escape in applicableEscapes)
                 {
-                    scanned += 2;
-                    continue;
+                    if (maybeEscape.SequenceEqual(escape))
+                    {
+                        scanned += 2;
+                        handledEscape = true;
+                        break;
+                    }
                 }
             }
 
+            if (handledEscape)
+            {
+                continue;
+            }
+
             var c = relevantInput[scanned];
-            if (c == '"' && isSingleQuote && scanned == ctx.Input.Length - 1)
+            if (c == '"' && isSingleQuote && scanned == relevantInput.Length - 1)
             {
                 break;
             }
 
-            if (c == '\'' && !isSingleQuote && scanned == ctx.Input.Length - 1)
+            if (c == '\'' && !isSingleQuote && scanned == relevantInput.Length - 1)
             {
                 break;
             }
@@ -98,6 +122,12 @@ public class StringScanner: ISubScanner
 
         if (!hasFoundEnd)
         {
+            errors.Add(new JsonPathError(
+                DiagnosticPhase.Lexer,
+                "string",
+                "Unterminated string literal",
+                new SourceSpan(ctx.Position, ctx.RemainingLength),
+                allocator));
             return false;
         }
 
