@@ -46,13 +46,13 @@ public class TokenKindExtensionsTests
         var result = "??".TryGetTokenKind(out var kind);
 
         Assert.False(result);
-        Assert.Equal(TokenKind.Unknown, kind);
+        Assert.Equal(TokenKind.Eof, kind);
     }
 
     [Fact]
     public void GetTokenString_ReturnsNullForUnknownKind()
     {
-        var tokenString = TokenKind.Unknown.GetTokenString();
+        var tokenString = TokenKind.Eof.GetTokenString();
 
         Assert.Null(tokenString);
     }

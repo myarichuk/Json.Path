@@ -25,6 +25,8 @@ public unsafe ref struct AstBuilder
 
     public AstNode* Root => _root;
 
+    public AstHandle RootHandle => new(_root);
+    
     private AstNode* AllocNode(AstKind kind)
     {
         var node = (AstNode*)_allocator.Alloc((nuint)sizeof(AstNode));

@@ -19,7 +19,7 @@ public static class LexerExtensions
         }
 
         token = new Token(
-            TokenKind.Unknown,
+            TokenKind.Eof,
             start,
             literal.Length);
         return true;
@@ -76,7 +76,7 @@ public static class LexerExtensions
 
         var tokenLength = matchIndex - start;
         token = new Token(
-            TokenKind.Unknown,
+            TokenKind.Eof,
             start,
             tokenLength);
 
