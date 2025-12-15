@@ -1,4 +1,7 @@
 using System.Runtime.CompilerServices;
+using JsonPath.Parser.Allocators;
+using JsonPath.Parser.Diagnostics;
+using JsonPath.Parser.Helpers;
 
 namespace JsonPath.Parser.Lexer;
 
