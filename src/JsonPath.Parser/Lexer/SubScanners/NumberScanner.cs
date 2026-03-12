@@ -104,9 +104,9 @@ public class NumberScanner: ISubScanner
         return false;
     }
     
-    static bool IsSign(char c) => c is '+' or '-';
+    private static bool IsSign(char c) => c is '+' or '-';
     
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    static bool IsAsciiDigit(char c) => (uint)(c - '0') <= 9;
+    private static bool IsAsciiDigit(char c) => (uint)(c - '0') <= 9;
 
 }
