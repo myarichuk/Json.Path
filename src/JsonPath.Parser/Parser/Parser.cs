@@ -8,88 +8,29 @@ public readonly unsafe ref struct Parser(ArenaAllocator allocator)
     public AstHandle Parse(in ArenaList<Token> tokens)
     {
         var builder = new AstBuilder(allocator);
-        var data = new AstDataTable(allocator);
-        
-        var expressionBuilder = 
-            new AstExpressionBuilder(allocator, builder, data, builder.RootHandle);
+
+        var ctx = new ParserContext(tokens.AsPtr, tokens.Length);
         
         builder.AddSibling(AstKind.RootIdentifier); // root is always there
         var isAtEof = false;
         
-        for (int i = 0; i < tokens.Length; i++)
+        // Start parsing from the root
+        if (ctx.Current.Kind == TokenKind.Root)
         {
-            var token = tokens[i];
+            ctx.Consume();
+        }
+
+        while (!isAtEof)
+        {
+            var token = ctx.Current;
             switch (token.Kind)
             {
                 case TokenKind.Eof:
                     isAtEof = true;
                     break;
-                case TokenKind.Identifier:
-                    break;
-                case TokenKind.Number:
-                    break;
-                case TokenKind.String:
-                    break;
-                case TokenKind.Root:
-                    break;
-                case TokenKind.Current:
-                    break;
-                case TokenKind.DotDot:
-                    break;
-                case TokenKind.Dot:
-                    break;
-                case TokenKind.LBracket:
-                    break;
-                case TokenKind.RBracket:
-                    break;
-                case TokenKind.LParen:
-                    break;
-                case TokenKind.RParen:
-                    break;
-                case TokenKind.Colon:
-                    break;
-                case TokenKind.Comma:
-                    break;
-                case TokenKind.Question:
-                    break;
-                case TokenKind.Star:
-                    break;
-                case TokenKind.RegexMatch:
-                    break;
-                case TokenKind.Eq:
-                    break;
-                case TokenKind.Ne:
-                    break;
-                case TokenKind.Le:
-                    break;
-                case TokenKind.Lt:
-                    break;
-                case TokenKind.Ge:
-                    break;
-                case TokenKind.Gt:
-                    break;
-                case TokenKind.And:
-                    break;
-                case TokenKind.Or:
-                    break;
-                case TokenKind.Not:
-                    break;
-                case TokenKind.Add:
-                    break;
-                case TokenKind.Sub:
-                    break;
-                case TokenKind.Div:
-                    break;
-                case TokenKind.Mod:
-                    break;
-                case TokenKind.True:
-                    break;
-                case TokenKind.False:
-                    break;
-                case TokenKind.Null:
-                    break;
                 default:
-                    throw new ArgumentOutOfRangeException();
+                    ParseSegment(ref ctx);
+                    break;
             }
 
             if (isAtEof)
@@ -99,5 +40,12 @@ public readonly unsafe ref struct Parser(ArenaAllocator allocator)
         }
         
         return new AstHandle(builder.Root);
+    }
+
+    private void ParseSegment(ref ParserContext ctx)
+    {
+        // Placeholder for segment parsing logic.
+        // For a skeleton parser, we simply consume the current token to advance the parser.
+        ctx.Consume();
     }
 }
